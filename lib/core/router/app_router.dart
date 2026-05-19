@@ -61,7 +61,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/wizard/:tipo',
-        builder: (_, state) => WizardPage(tipo: state.pathParameters['tipo'] ?? 'nc'),
+        builder: (_, state) => WizardPage(
+          tipo: state.pathParameters['tipo'] ?? 'nc',
+          extra: state.extra as Map<String, dynamic>?,
+        ),
       ),
     ],
   );

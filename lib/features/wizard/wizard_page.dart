@@ -17,8 +17,9 @@ import '../ocorrencias/repository/support_repository_impl.dart';
 
 class WizardPage extends ConsumerStatefulWidget {
   final String tipo;
+  final Map<String, dynamic>? extra; // fotoPath, latitude, longitude, capturedAt, cidade
 
-  const WizardPage({super.key, required this.tipo});
+  const WizardPage({super.key, required this.tipo, this.extra});
 
   @override
   ConsumerState<WizardPage> createState() => _WizardPageState();
