@@ -40,4 +40,41 @@ void main() {
     final pendentes = await db.rascunhosDao.listarPendentes();
     expect(pendentes, isEmpty);
   });
+
+  test('OcorrenciasCacheDao salvar and listarPorTipo', () async {
+    await db.ocorrenciasCacheDao.salvar(OcorrenciasCacheCompanion.insert(
+      id: 'nc-001',
+      tipo: 'NC',
+      dadosJson: '{"titulo":"Teste"}',
+      usuarioId: 'user-001',
+      cachedEm: DateTime.now().millisecondsSinceEpoch,
+    ));
+
+    final ncs = await db.ocorrenciasCacheDao.listarPorTipo('NC');
+    expect(ncs.length, 1);
+    expect(ncs.first.id, 'nc-001');
+  });
+
+  test('OcorrenciasCacheDao limpar removes all by tipo', () async {
+    await db.ocorrenciasCacheDao.salvar(OcorrenciasCacheCompanion.insert(
+      id: 'nc-001',
+      tipo: 'NC',
+      dadosJson: '{}',
+      usuarioId: 'u1',
+      cachedEm: 0,
+    ));
+    await db.ocorrenciasCacheDao.salvar(OcorrenciasCacheCompanion.insert(
+      id: 'dv-001',
+      tipo: 'DESVIO',
+      dadosJson: '{}',
+      usuarioId: 'u1',
+      cachedEm: 0,
+    ));
+
+    await db.ocorrenciasCacheDao.limpar('NC');
+    final ncs = await db.ocorrenciasCacheDao.listarPorTipo('NC');
+    final desvios = await db.ocorrenciasCacheDao.listarPorTipo('DESVIO');
+    expect(ncs, isEmpty);
+    expect(desvios.length, 1);
+  });
 }
