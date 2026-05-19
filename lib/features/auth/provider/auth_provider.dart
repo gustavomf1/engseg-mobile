@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../model/login_response.dart';
 import '../repository/auth_repository_impl.dart';
+import '../../../core/notifications/fcm_provider.dart';
 
 final authProvider = AsyncNotifierProvider<AuthNotifier, LoginResponse?>(
   AuthNotifier.new,
@@ -20,6 +21,9 @@ class AuthNotifier extends AsyncNotifier<LoginResponse?> {
     state = await AsyncValue.guard(
       () => ref.read(authRepositoryProvider).login(email, senha),
     );
+    if (state.hasValue && state.value != null) {
+      await ref.read(fcmServiceProvider).init(state.value!.id);
+    }
   }
 
   Future<void> logout() async {

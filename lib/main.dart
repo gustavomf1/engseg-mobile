@@ -1,15 +1,23 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/network/connectivity_provider.dart';
+import 'core/notifications/fcm_background_handler.dart';
 import 'core/router/app_router.dart';
 import 'core/sync/sync_service.dart';
 import 'core/sync/sync_status.dart';
 import 'features/auth/provider/auth_provider.dart';
 import 'shared/theme/tokens.dart';
 
-void main() {
+final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   runApp(const ProviderScope(child: EngSegApp()));
 }
 
@@ -22,20 +30,21 @@ class EngSegApp extends ConsumerWidget {
 
     return _AppConnectivityListener(
       child: MaterialApp.router(
-      debugShowCheckedModeBanner: false,
-      title: 'EngSeg',
-      theme: engSegThemeLight(),
-      darkTheme: engSegThemeDark(),
-      themeMode: ThemeMode.system,
-      routerConfig: router,
-      builder: (context, child) => _MobileViewport(child: child ?? const SizedBox.shrink()),
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [Locale('pt', 'BR')],
-    ),
+        debugShowCheckedModeBanner: false,
+        title: 'EngSeg',
+        theme: engSegThemeLight(),
+        darkTheme: engSegThemeDark(),
+        themeMode: ThemeMode.system,
+        routerConfig: router,
+        scaffoldMessengerKey: scaffoldMessengerKey,
+        builder: (context, child) => _MobileViewport(child: child ?? const SizedBox.shrink()),
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [Locale('pt', 'BR')],
+      ),
     );
   }
 }
