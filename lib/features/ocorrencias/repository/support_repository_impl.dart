@@ -4,6 +4,7 @@ import '../model/usuario_summary.dart';
 import '../model/localizacao.dart';
 import '../model/norma.dart';
 import '../model/estabelecimento.dart';
+import '../model/dashboard_stats.dart';
 import 'support_repository.dart';
 import '../../../core/network/dio_client.dart';
 
@@ -30,6 +31,16 @@ final normasProvider = FutureProvider<List<Norma>>((ref) {
 final estabelecimentosProvider = FutureProvider<List<Estabelecimento>>((ref) {
   return ref.read(supportRepositoryProvider).listarEstabelecimentos();
 });
+
+final dashboardProvider = FutureProvider.family<DashboardStats, String>(
+  (ref, estabelecimentoId) async {
+    final dio = ref.read(dioProvider);
+    final response = await dio.get<Map<String, dynamic>>(
+      '/api/dashboard/estabelecimento/$estabelecimentoId',
+    );
+    return DashboardStats.fromJson(response.data!);
+  },
+);
 
 class SupportRepositoryImpl implements SupportRepository {
   final Dio dio;
