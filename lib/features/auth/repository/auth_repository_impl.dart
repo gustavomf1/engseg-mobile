@@ -47,10 +47,10 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<LoginResponse?> getSession() async {
-    final json = await storage.read(key: 'user_session');
-    if (json == null) return null;
+    final sessionJson = await storage.read(key: 'user_session');
+    if (sessionJson == null) return null;
     return LoginResponse.fromJson(
-      jsonDecode(json) as Map<String, dynamic>,
+      jsonDecode(sessionJson) as Map<String, dynamic>,
     );
   }
 }
