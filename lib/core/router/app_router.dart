@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/auth/provider/auth_provider.dart';
 import '../../features/auth/splash_page.dart';
+import '../../features/auth/workspace_select_page.dart';
 import '../../features/capture/camera_page.dart';
 import '../../features/dashboard/dashboard_page.dart';
 import '../../features/drafts/drafts_page.dart';
@@ -42,6 +43,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/', builder: (_, __) => const SplashPage()),
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
+      GoRoute(path: '/workspace', builder: (_, __) => const WorkspaceSelectPage()),
       ShellRoute(
         builder: (_, __, child) => EngSegShell(child: child),
         routes: [
