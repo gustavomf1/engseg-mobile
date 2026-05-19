@@ -1,22 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../shared/widgets/prototype_ui.dart';
+import 'provider/auth_provider.dart';
 
-class SplashPage extends StatefulWidget {
+class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
 
   @override
-  State<SplashPage> createState() => _SplashPageState();
+  ConsumerState<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage> {
+class _SplashPageState extends ConsumerState<SplashPage> {
   @override
   void initState() {
     super.initState();
-    Future<void>.delayed(const Duration(milliseconds: 1600), () {
-      if (mounted) context.go('/login');
-    });
+    Future<void>.delayed(const Duration(milliseconds: 1200), _checkSession);
+  }
+
+  Future<void> _checkSession() async {
+    if (!mounted) return;
+    final session = await ref.read(authProvider.future);
+    if (!mounted) return;
+    if (session == null) {
+      context.go('/login');
+    } else {
+      final workspace = ref.read(workspaceProvider);
+      context.go(workspace == null ? '/workspace' : '/feed');
+    }
   }
 
   @override

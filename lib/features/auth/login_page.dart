@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../shared/widgets/prototype_ui.dart';
+import 'provider/auth_provider.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
+class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProviderStateMixin {
   final email = TextEditingController(text: 'gustavo.ferreira@ers.eng.br');
   final password = TextEditingController(text: '••••••••••');
   bool loading = false;
@@ -38,11 +40,25 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   Future<void> _submit() async {
     setState(() => loading = true);
     _spinController.repeat();
-    await Future<void>.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    _spinController.stop();
-    setState(() => loading = false);
-    context.go('/feed');
+    try {
+      await ref.read(authProvider.notifier).login(
+        email.text.trim(),
+        password.text,
+      );
+      if (!mounted) return;
+      final session = ref.read(authProvider).value;
+      if (session != null) {
+        context.go('/workspace');
+      }
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      _spinController.stop();
+      if (mounted) setState(() => loading = false);
+    }
   }
 
   @override
