@@ -14,27 +14,27 @@ final supportRepositoryProvider = Provider<SupportRepository>((ref) {
 
 final usuariosProvider = FutureProvider.family<List<UsuarioSummary>, String>(
   (ref, estabelecimentoId) async {
-    return ref.read(supportRepositoryProvider).listarUsuarios(estabelecimentoId);
+    return ref.watch(supportRepositoryProvider).listarUsuarios(estabelecimentoId);
   },
 );
 
 final localizacoesProvider = FutureProvider.family<List<Localizacao>, String>(
   (ref, estabelecimentoId) async {
-    return ref.read(supportRepositoryProvider).listarLocalizacoes(estabelecimentoId);
+    return ref.watch(supportRepositoryProvider).listarLocalizacoes(estabelecimentoId);
   },
 );
 
 final normasProvider = FutureProvider<List<Norma>>((ref) {
-  return ref.read(supportRepositoryProvider).listarNormas();
+  return ref.watch(supportRepositoryProvider).listarNormas();
 });
 
 final estabelecimentosProvider = FutureProvider<List<Estabelecimento>>((ref) {
-  return ref.read(supportRepositoryProvider).listarEstabelecimentos();
+  return ref.watch(supportRepositoryProvider).listarEstabelecimentos();
 });
 
 final dashboardProvider = FutureProvider.family<DashboardStats, String>(
   (ref, estabelecimentoId) async {
-    final dio = ref.read(dioProvider);
+    final dio = ref.watch(dioProvider);
     final response = await dio.get<Map<String, dynamic>>(
       '/api/dashboard/estabelecimento/$estabelecimentoId',
     );

@@ -12,7 +12,7 @@ import '../../../core/database/ocorrencias_cache_dao.dart';
 
 final ncListProvider = FutureProvider.family<List<NcSummary>, String>(
   (ref, estabelecimentoId) async {
-    return ref.read(ncRepositoryProvider).listar(
+    return ref.watch(ncRepositoryProvider).listar(
           estabelecimentoId: estabelecimentoId,
         );
   },

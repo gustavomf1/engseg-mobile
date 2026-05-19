@@ -20,7 +20,7 @@ class DraftRepositoryImpl implements DraftRepository {
 
   @override
   Stream<List<RascunhoLocal>> watchPendentes() {
-    return dao.watchTodos().map(
+    return dao.watchPendentes().map(
       (list) => list.map(_toModel).toList(),
     );
   }

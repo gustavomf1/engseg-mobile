@@ -20,6 +20,12 @@ class RascunhosDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(t) => OrderingTerm.desc(t.criadoEm)]))
           .watch();
 
+  Stream<List<Rascunho>> watchPendentes() =>
+      (select(rascunhos)
+            ..where((t) => t.sincronizado.equals(0))
+            ..orderBy([(t) => OrderingTerm.desc(t.criadoEm)]))
+          .watch();
+
   Future<void> marcarSincronizado(String id, String serverId) =>
       (update(rascunhos)..where((t) => t.id.equals(id))).write(
         RascunhosCompanion(

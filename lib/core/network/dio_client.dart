@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:go_router/go_router.dart';
 import '../config/app_config.dart';
 import '../router/navigator_key.dart';
 
@@ -35,7 +36,10 @@ Dio buildDio(FlutterSecureStorage storage) {
       onError: (error, handler) async {
         if (error.response?.statusCode == 401) {
           await storage.deleteAll();
-          navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (_) => false);
+          final context = navigatorKey.currentContext;
+          if (context != null && context.mounted) {
+            GoRouter.of(context).go('/login');
+          }
         }
         handler.next(error);
       },
