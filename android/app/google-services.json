@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "634136686539",
+    "project_id": "teste-mobile-f310f",
+    "storage_bucket": "teste-mobile-f310f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:634136686539:android:633bb2a97c1e28364d104e",
+        "android_client_info": {
+          "package_name": "com.example.engseg_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAc2vobjbt60uZZ36xoRNo-N06YFIQTUuw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
