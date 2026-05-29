@@ -7,7 +7,7 @@ class Norma {
 
   factory Norma.fromJson(Map<String, dynamic> json) => Norma(
     id: json['id'] as String,
-    codigo: json['codigo'] as String,
-    nome: json['nome'] as String,
+    codigo: json['codigo'] as String? ?? '',
+    nome: json['nome'] as String? ?? '',
   );
 }
