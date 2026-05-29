@@ -29,7 +29,7 @@ class EvidenciaRepositoryImpl implements EvidenciaRepository {
       'tipo': tipo,
       'latitude': meta.latitude.toString(),
       'longitude': meta.longitude.toString(),
-      'capturedAt': meta.capturedAt.toString(),
+      'capturedAt': DateTime.fromMillisecondsSinceEpoch(meta.capturedAt).toUtc().toIso8601String(),
       'origem': 'MOBILE',
       if (meta.cidade != null) 'cidade': meta.cidade,
     });
@@ -56,7 +56,7 @@ class EvidenciaRepositoryImpl implements EvidenciaRepository {
       'tipo': tipo,
       'latitude': meta.latitude.toString(),
       'longitude': meta.longitude.toString(),
-      'capturedAt': meta.capturedAt.toString(),
+      'capturedAt': DateTime.fromMillisecondsSinceEpoch(meta.capturedAt).toUtc().toIso8601String(),
       'origem': 'MOBILE',
       if (meta.cidade != null) 'cidade': meta.cidade,
     });
