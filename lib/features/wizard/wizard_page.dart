@@ -59,14 +59,13 @@ class _WizardPageState extends ConsumerState<WizardPage> {
   bool _publishing = false;
   String? _publishError;
 
-  int get stepCount => isNc ? 6 : 4;
+  int get stepCount => isNc ? 5 : 3;
 
   String get stepTitle {
     if (!isNc) {
       return switch (step) {
         0 => 'Identificação',
         1 => 'Descrição',
-        2 => 'Evidências',
         _ => 'Revisão',
       };
     }
@@ -75,7 +74,6 @@ class _WizardPageState extends ConsumerState<WizardPage> {
       1 => 'Descrição',
       2 => 'Matriz de Risco',
       3 => 'Normas',
-      4 => 'Evidências',
       _ => 'Revisão',
     };
   }
@@ -145,8 +143,6 @@ class _WizardPageState extends ConsumerState<WizardPage> {
                       }),
                     ),
                   if ((isNc && step == 4) || (!isNc && step == 2))
-                    const _EvidenceStep(),
-                  if ((isNc && step == 5) || (!isNc && step == 3))
                     _ReviewStep(isNc: isNc),
                 ],
               ),
@@ -174,6 +170,31 @@ class _WizardPageState extends ConsumerState<WizardPage> {
   }
 
   void _openConfirm() {
+    final photos = ref.read(captureProvider);
+    final workspace = ref.read(workspaceProvider);
+    final titulo = _tituloCtrl.text.trim();
+
+    final rows = <_ConfirmRow>[
+      _ConfirmRow('Tipo', isNc ? 'Nao Conformidade' : 'Desvio'),
+      _ConfirmRow('Titulo', titulo.isEmpty ? '(sem titulo)' : titulo),
+      _ConfirmRow('Estabelecimento', workspace?.estabelecimento.nome ?? '—'),
+      if (isNc) ...[
+        _ConfirmRow('Risco', '$severity × $probability = ${severity * probability}',
+            red: severity * probability >= 15),
+        _ConfirmRow('Regra de Ouro', _regraDeOuro ? 'Sim' : 'Nao', red: _regraDeOuro),
+        _ConfirmRow('Reincidencia', _reincidencia ? 'Sim' : 'Nao'),
+        _ConfirmRow('Prazo tratativa', '30 dias (automatico)'),
+        _ConfirmRow('Normas', '${_selectedNormaIds.length} selecionada(s)'),
+        _ConfirmRow('Resp. NC', _responsavel?.nome ?? '—'),
+        _ConfirmRow('Resp. Tratativa', _responsavelTratativa?.nome ?? '—'),
+      ] else ...[
+        _ConfirmRow('Resp. Desvio', _responsavel?.nome ?? '—'),
+        _ConfirmRow('Resp. Tratativa', _responsavelTratativa?.nome ?? '—'),
+        _ConfirmRow('Regra de Ouro', _regraDeOuro ? 'Sim' : 'Nao', red: _regraDeOuro),
+      ],
+      _ConfirmRow('Fotos', photos.isEmpty ? 'Sem foto' : '${photos.length} foto(s)'),
+    ];
+
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -182,6 +203,7 @@ class _WizardPageState extends ConsumerState<WizardPage> {
       enableDrag: false,
       builder: (_) => _ConfirmPublishModal(
         isNc: isNc,
+        rows: rows,
         onPublish: _publicar,
       ),
     );
@@ -1156,6 +1178,31 @@ class _RiskStep extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 14),
+        ProtoCard(
+          child: Row(children: [
+            const Icon(Icons.calendar_month_outlined,
+                color: ProtoColors.muted, size: 16),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Data Limite para Tratativa',
+                    style: TextStyle(
+                        color: ProtoColors.muted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(
+                  '30 dias a partir do registro (automatico)',
+                  style: TextStyle(
+                      color: ProtoColors.text.withValues(alpha: .7),
+                      fontSize: 12),
+                ),
+              ],
+            ),
+          ]),
+        ),
       ],
     );
   }
@@ -2055,47 +2102,7 @@ class _ModeTab extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Step 4: Evidence
 // ---------------------------------------------------------------------------
-
-class _EvidenceStep extends StatelessWidget {
-  const _EvidenceStep();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _Label('Evidencias fotograficas · 4'),
-        GridView.count(
-          crossAxisCount: 3,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 10,
-          childAspectRatio: .82,
-          children: [
-            for (int i = 0; i < 4; i++) const _PhotoTile(captured: true),
-            const _PhotoTile(),
-            const _PhotoTile(add: true),
-            const _PhotoTile(add: true),
-          ],
-        ),
-        const SizedBox(height: 10),
-        const Text('As 4 fotos foram capturadas com GPS automatico.',
-            style: TextStyle(color: ProtoColors.muted2, fontSize: 12)),
-        const SizedBox(height: 22),
-        const _Label('Data Limite para Tratativa'),
-        const _SelectRow(
-            icon: Icons.calendar_month_outlined, text: '17/06/2026'),
-        const SizedBox(height: 6),
-        const Text('Prazo padrão: 30 dias a partir do registro',
-            style: TextStyle(color: ProtoColors.muted2, fontSize: 11)),
-      ],
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Step 5: Review
+// Step 4 (NC) / Step 2 (Desvio): Review
 // ---------------------------------------------------------------------------
 
 class _ReviewStep extends StatelessWidget {
@@ -2184,12 +2191,20 @@ class _ReviewStep extends StatelessWidget {
 // ConfirmPublishModal — receives onPublish callback
 // ---------------------------------------------------------------------------
 
+class _ConfirmRow {
+  final String label;
+  final String value;
+  final bool red;
+  const _ConfirmRow(this.label, this.value, {this.red = false});
+}
+
 class _ConfirmPublishModal extends StatefulWidget {
   final bool isNc;
+  final List<_ConfirmRow> rows;
   final Future<void> Function() onPublish;
 
   const _ConfirmPublishModal(
-      {required this.isNc, required this.onPublish});
+      {required this.isNc, required this.rows, required this.onPublish});
 
   @override
   State<_ConfirmPublishModal> createState() => _ConfirmPublishModalState();
@@ -2263,23 +2278,11 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
                   const SizedBox(height: 18),
                   ProtoCard(
                     color: ProtoColors.surface2,
-                    child: Column(children: [
-                      _ReviewRow('Tipo',
-                          widget.isNc ? 'Nao Conformidade' : 'Desvio'),
-                      _ReviewRow(
-                          'Titulo',
-                          widget.isNc
-                              ? 'Trabalho em altura sem\nancoragem dupla na fachada do\nbloco C'
-                              : 'EPI inadequado em soldagem\nMIG — luva sem protecao termica'),
-                      const _ReviewRow('Local', 'Bloco C - fachada norte'),
-                      if (widget.isNc)
-                        const _ReviewRow('Risco', 'Critico · 20',
-                            red: true),
-                      const _ReviewRow('Evidencias', '4 fotos · GPS'),
-                      if (!widget.isNc)
-                        const _ReviewRow(
-                            'Notificacoes', '2 destinatarios'),
-                    ]),
+                    child: Column(
+                      children: widget.rows
+                          .map((r) => _ReviewRow(r.label, r.value, red: r.red))
+                          .toList(),
+                    ),
                   ),
                   if (errorMsg != null) ...[
                     const SizedBox(height: 10),
@@ -2519,60 +2522,6 @@ class _Axis extends StatelessWidget {
                   color: ProtoColors.muted,
                   fontSize: 11,
                   fontWeight: FontWeight.w800))));
-}
-
-class _PhotoTile extends StatelessWidget {
-  final bool captured;
-  final bool add;
-  const _PhotoTile({this.captured = false, this.add = false});
-  @override
-  Widget build(BuildContext context) => Container(
-      decoration: BoxDecoration(
-          color: ProtoColors.surface2,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-              color:
-                  captured ? Colors.transparent : ProtoColors.border)),
-      child: Stack(children: [
-        if (captured)
-          Positioned.fill(
-              child: DecoratedBox(
-                  decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      gradient: LinearGradient(colors: [
-                        ProtoColors.surface2,
-                        ProtoColors.bg.withValues(alpha: .6)
-                      ])))),
-        Center(
-            child: Icon(
-                add
-                    ? Icons.add_photo_alternate_outlined
-                    : Icons.camera_alt_outlined,
-                color: ProtoColors.muted,
-                size: 24)),
-        if (!captured)
-          Center(
-              child: Padding(
-                  padding: const EdgeInsets.only(top: 44),
-                  child: Text(add ? 'Adicionar' : 'Tirar foto',
-                      style: const TextStyle(
-                          color: ProtoColors.muted, fontSize: 11)))),
-        if (captured)
-          Positioned(
-              left: 8,
-              bottom: 8,
-              child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: .72),
-                      borderRadius: BorderRadius.circular(6)),
-                  child: const Text('GPS',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900))))
-      ]));
 }
 
 class _ReviewLine extends StatelessWidget {
