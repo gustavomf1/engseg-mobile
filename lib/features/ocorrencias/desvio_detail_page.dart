@@ -27,11 +27,15 @@ String _formatDate(String iso) {
   }
 }
 
-Future<void> _downloadImage(BuildContext context, String url) async {
+Future<void> _downloadImage(BuildContext context, String url,
+    {String? token}) async {
   try {
     final dio = Dio();
     final response = await dio.get<Uint8List>(url,
-        options: Options(responseType: ResponseType.bytes));
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: token != null ? {'Authorization': 'Bearer $token'} : null,
+        ));
     final dir = await getApplicationDocumentsDirectory();
     final name =
         'desvio_${DateTime.now().millisecondsSinceEpoch}.jpg';
@@ -55,18 +59,22 @@ Future<void> _downloadImage(BuildContext context, String url) async {
   }
 }
 
-void _openImageViewer(BuildContext context, List<String> urls, int index) {
+void _openImageViewer(BuildContext context, List<String> urls, int index,
+    {String? token}) {
   showDialog<void>(
     context: context,
     barrierColor: Colors.black87,
-    builder: (_) => _ImageViewer(urls: urls, initialIndex: index),
+    builder: (_) =>
+        _ImageViewer(urls: urls, initialIndex: index, token: token),
   );
 }
 
 class _ImageViewer extends StatefulWidget {
   final List<String> urls;
   final int initialIndex;
-  const _ImageViewer({required this.urls, required this.initialIndex});
+  final String? token;
+  const _ImageViewer(
+      {required this.urls, required this.initialIndex, this.token});
   @override
   State<_ImageViewer> createState() => _ImageViewerState();
 }
@@ -100,7 +108,8 @@ class _ImageViewerState extends State<_ImageViewer> {
           IconButton(
             icon: const Icon(Icons.download_rounded, color: Colors.white),
             tooltip: 'Baixar',
-            onPressed: () => _downloadImage(context, widget.urls[_current]),
+            onPressed: () => _downloadImage(context, widget.urls[_current],
+                token: widget.token),
           ),
         ],
       ),
@@ -112,8 +121,13 @@ class _ImageViewerState extends State<_ImageViewer> {
           minScale: 0.5,
           maxScale: 5.0,
           child: Center(
-            child: Image.network(
-              widget.urls[i],
+            child: Image(
+              image: NetworkImage(
+                widget.urls[i],
+                headers: widget.token != null
+                    ? {'Authorization': 'Bearer ${widget.token}'}
+                    : {},
+              ),
               fit: BoxFit.contain,
               loadingBuilder: (_, child, progress) => progress == null
                   ? child
@@ -192,6 +206,7 @@ class _BodyState extends ConsumerState<_Body> {
   Widget build(BuildContext context) {
     final fotos = ref.watch(desvioEvidenciasProvider(d.id)).valueOrNull ?? [];
     final session = ref.watch(authProvider).valueOrNull;
+    final token = session?.token;
     final isResponsavelTratativa =
         session != null && session.id == d.responsavelTratativaId;
     final isResponsavelDesvio =
@@ -278,13 +293,17 @@ class _BodyState extends ConsumerState<_Body> {
               itemCount: fotos.length,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (_, i) => GestureDetector(
-                onTap: () => _openImageViewer(context, fotos, i),
+                onTap: () =>
+                    _openImageViewer(context, fotos, i, token: token),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Stack(
                     children: [
-                      Image.network(
-                        fotos[i],
+                      Image(
+                        image: NetworkImage(fotos[i],
+                            headers: token != null
+                                ? {'Authorization': 'Bearer $token'}
+                                : {}),
                         width: 260,
                         height: 190,
                         fit: BoxFit.cover,
@@ -526,7 +545,11 @@ class _BodyState extends ConsumerState<_Body> {
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: url != null
-                          ? Image.network(url,
+                          ? Image(
+                              image: NetworkImage(url,
+                                  headers: token != null
+                                      ? {'Authorization': 'Bearer $token'}
+                                      : {}),
                               width: 64, height: 64, fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => _thumbFallback())
                           : _thumbFallback(),
