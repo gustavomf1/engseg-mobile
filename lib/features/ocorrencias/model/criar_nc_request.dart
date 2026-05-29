@@ -9,6 +9,7 @@ class CriarNcRequest {
   final String? localizacaoId;
   final String? responsavelNcId;
   final String? responsavelTrativaId;
+  final String? ncAnteriorId;
   final List<String> normaIds;
   final List<String> emailsManuais;
   final List<String> emailsPadraoExcluidos;
@@ -24,6 +25,7 @@ class CriarNcRequest {
     this.localizacaoId,
     this.responsavelNcId,
     this.responsavelTrativaId,
+    this.ncAnteriorId,
     this.normaIds = const [],
     this.emailsManuais = const [],
     this.emailsPadraoExcluidos = const [],
@@ -40,6 +42,7 @@ class CriarNcRequest {
         if (localizacaoId != null) 'localizacaoId': localizacaoId,
         if (responsavelNcId != null) 'responsavelNcId': responsavelNcId,
         if (responsavelTrativaId != null) 'responsavelTrativaId': responsavelTrativaId,
+        if (ncAnteriorId != null) 'ncAnteriorId': ncAnteriorId,
         'normaIds': normaIds,
         'emailsManuais': emailsManuais,
         'emailsPadraoExcluidos': emailsPadraoExcluidos,

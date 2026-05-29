@@ -12,6 +12,7 @@ import '../auth/provider/auth_provider.dart';
 import '../ocorrencias/model/criar_desvio_request.dart';
 import '../ocorrencias/model/criar_nc_request.dart';
 import '../ocorrencias/model/evidencia_metadata.dart';
+import '../ocorrencias/model/nc_summary.dart';
 import '../ocorrencias/model/norma.dart';
 import '../ocorrencias/model/usuario_summary.dart';
 import '../ocorrencias/repository/desvio_repository_impl.dart';
@@ -51,6 +52,9 @@ class _WizardPageState extends ConsumerState<WizardPage> {
   // Responsável pickers
   UsuarioSummary? _responsavel;
   UsuarioSummary? _responsavelTratativa;
+
+  // NC anterior (reincidência)
+  NcSummary? _ncAnterior;
 
   // Publish state
   bool _publishing = false;
@@ -120,6 +124,8 @@ class _WizardPageState extends ConsumerState<WizardPage> {
                       onResponsavel: (u) => setState(() => _responsavel = u),
                       onResponsavelTratativa: (u) =>
                           setState(() => _responsavelTratativa = u),
+                      ncAnterior: _ncAnterior,
+                      onNcAnterior: (nc) => setState(() => _ncAnterior = nc),
                     ),
                   if (isNc && step == 2)
                     _RiskStep(
@@ -206,6 +212,7 @@ class _WizardPageState extends ConsumerState<WizardPage> {
         normaIds: _selectedNormaIds.toList(),
         responsavelNcId: _responsavel?.id,
         responsavelTrativaId: _responsavelTratativa?.id,
+        ncAnteriorId: _ncAnterior?.id,
       );
       final nc = await ref.read(ncRepositoryProvider).criar(request);
       await _uploadPhotos(nc.id, isNc: true);
@@ -401,6 +408,8 @@ class _DescriptionStep extends ConsumerWidget {
   final UsuarioSummary? responsavelTratativa;
   final ValueChanged<UsuarioSummary?> onResponsavel;
   final ValueChanged<UsuarioSummary?> onResponsavelTratativa;
+  final NcSummary? ncAnterior;
+  final ValueChanged<NcSummary?> onNcAnterior;
 
   const _DescriptionStep({
     required this.isNc,
@@ -415,6 +424,8 @@ class _DescriptionStep extends ConsumerWidget {
     required this.responsavelTratativa,
     required this.onResponsavel,
     required this.onResponsavelTratativa,
+    required this.ncAnterior,
+    required this.onNcAnterior,
   });
 
   @override
@@ -512,75 +523,87 @@ class _DescriptionStep extends ConsumerWidget {
                     color: ProtoColors.muted,
                     fontSize: 11,
                     fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            Container(
-              height: 44,
-              decoration: BoxDecoration(
-                  color: ProtoColors.surface2,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: ProtoColors.orange.withValues(alpha: .5))),
-              child: const Row(children: [
-                SizedBox(width: 12),
-                Icon(Icons.link_rounded, color: ProtoColors.orange, size: 15),
-                SizedBox(width: 8),
-                Expanded(
-                    child: Text('Trabalho em altura — CONCLUÍDA',
-                        style:
-                            TextStyle(color: ProtoColors.text, fontSize: 13))),
-                Padding(
-                    padding: EdgeInsets.only(right: 12),
-                    child: Icon(Icons.keyboard_arrow_down_rounded,
-                        color: ProtoColors.muted, size: 18)),
-              ]),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                  color: ProtoColors.orange.withValues(alpha: .07),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                      color: ProtoColors.orange.withValues(alpha: .3))),
-              child: Row(children: [
-                const Text('RASTRO  ',
-                    style: TextStyle(
-                        color: ProtoColors.orange,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: .5)),
-                const Icon(Icons.arrow_forward,
-                    color: ProtoColors.muted, size: 11),
-                const SizedBox(width: 4),
-                Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                        color: ProtoColors.surface2,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: ProtoColors.border)),
-                    child: const Text('Trabalho em altura',
+            const SizedBox(height: 6),
+            if (workspaceId != null)
+              ref.watch(ncListProvider(workspaceId)).when(
+                    loading: () => const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: ProtoColors.orange)),
+                    error: (_, __) => const Text('Erro ao carregar NCs',
                         style: TextStyle(
-                            color: ProtoColors.muted, fontSize: 10))),
-                const SizedBox(width: 4),
-                const Icon(Icons.arrow_forward,
-                    color: ProtoColors.muted, size: 11),
-                const SizedBox(width: 4),
-                Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                        color: ProtoColors.blue.withValues(alpha: .15),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: ProtoColors.blue)),
-                    child: const Text('Esta NC',
-                        style: TextStyle(
-                            color: ProtoColors.blue,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800))),
-              ]),
-            ),
+                            color: ProtoColors.red, fontSize: 12)),
+                    data: (ncs) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                          color: ProtoColors.surface2,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: ProtoColors.orange.withValues(alpha: .5))),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<NcSummary?>(
+                          isExpanded: true,
+                          dropdownColor: ProtoColors.surface,
+                          value: ncAnterior,
+                          hint: const Text('Selecionar NC anterior',
+                              style: TextStyle(
+                                  color: ProtoColors.muted, fontSize: 13)),
+                          style: const TextStyle(
+                              color: ProtoColors.text, fontSize: 13),
+                          items: [
+                            const DropdownMenuItem(
+                                value: null,
+                                child: Text('— Nenhuma',
+                                    style: TextStyle(
+                                        color: ProtoColors.muted,
+                                        fontSize: 13))),
+                            ...ncs.map((nc) => DropdownMenuItem(
+                                  value: nc,
+                                  child: Text(
+                                    '${nc.titulo} · ${nc.status}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                )),
+                          ],
+                          onChanged: onNcAnterior,
+                        ),
+                      ),
+                    ),
+                  ),
+            if (ncAnterior != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                    color: ProtoColors.orange.withValues(alpha: .07),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: ProtoColors.orange.withValues(alpha: .3))),
+                child: Row(children: [
+                  const Icon(Icons.link_rounded,
+                      color: ProtoColors.orange, size: 13),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(ncAnterior!.titulo,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: ProtoColors.orange,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(ncAnterior!.status,
+                      style: const TextStyle(
+                          color: ProtoColors.muted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700)),
+                ]),
+              ),
+            ],
           ],
           const SizedBox(height: 10),
           _SignalRow(
