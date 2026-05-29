@@ -7,7 +7,7 @@ class EvidenciaInfo {
   factory EvidenciaInfo.fromJson(Map<String, dynamic> j) => EvidenciaInfo(
         id: j['id'] as String,
         nome: j['nome'] as String? ?? '',
-        url: j['url'] as String?,
+        url: j['urlArquivo'] as String?,
       );
 }
 

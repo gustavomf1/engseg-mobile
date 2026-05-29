@@ -36,7 +36,7 @@ final desvioEvidenciasProvider = FutureProvider.family<List<String>, String>(
         queryParameters: {'tipo': 'OCORRENCIA'},
       );
       return (r.data ?? [])
-          .map((e) => (e as Map<String, dynamic>)['url'] as String? ?? '')
+          .map((e) => (e as Map<String, dynamic>)['urlArquivo'] as String? ?? '')
           .where((url) => url.isNotEmpty)
           .toList();
     } catch (_) {

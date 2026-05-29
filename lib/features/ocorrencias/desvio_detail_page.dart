@@ -15,32 +15,13 @@ import 'model/trativa_desvio.dart';
 import 'repository/desvio_repository_impl.dart';
 import 'repository/evidencia_repository_impl.dart';
 
-Widget _photoStrip(List<String> urls) {
-  if (urls.isEmpty) return const SizedBox.shrink();
-  return SizedBox(
-    height: 180,
-    child: ListView.separated(
-      scrollDirection: Axis.horizontal,
-      itemCount: urls.length,
-      separatorBuilder: (_, __) => const SizedBox(width: 8),
-      itemBuilder: (_, i) => ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          urls[i],
-          width: 240,
-          height: 180,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(
-            width: 240,
-            height: 180,
-            color: ProtoColors.surface2,
-            child: const Icon(Icons.broken_image_outlined,
-                color: ProtoColors.muted, size: 36),
-          ),
-        ),
-      ),
-    ),
-  );
+String _formatDate(String iso) {
+  try {
+    final dt = DateTime.parse(iso);
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+  } catch (_) {
+    return iso;
+  }
 }
 
 class DesvioDetailPage extends ConsumerWidget {
@@ -55,6 +36,10 @@ class DesvioDetailPage extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: ProtoColors.bg,
         foregroundColor: ProtoColors.text,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => context.go('/desvios'),
+        ),
         title: const Text('Desvio'),
       ),
       body: async.when(
@@ -88,9 +73,7 @@ class _BodyState extends ConsumerState<_Body> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Falha: $e'),
-              backgroundColor: ProtoColors.red),
+          SnackBar(content: Text('Falha: $e'), backgroundColor: ProtoColors.red),
         );
       }
     } finally {
@@ -100,44 +83,169 @@ class _BodyState extends ConsumerState<_Body> {
 
   @override
   Widget build(BuildContext context) {
+    final fotos = ref.watch(desvioEvidenciasProvider(d.id)).valueOrNull ?? [];
     final session = ref.watch(authProvider).valueOrNull;
     final isResponsavelTratativa =
         session != null && session.id == d.responsavelTratativaId;
     final isResponsavelDesvio =
         session != null && session.id == d.responsavelDesvioId;
     final isApprover = session != null &&
-        (session.isAdmin ||
-            session.perfil == 'ENGENHEIRO' ||
-            isResponsavelDesvio);
+        (session.isAdmin || session.perfil == 'ENGENHEIRO' || isResponsavelDesvio);
     final canTratar =
         session != null && (session.isAdmin || isResponsavelTratativa);
 
-    final fotos = ref.watch(desvioEvidenciasProvider(d.id)).valueOrNull ?? [];
-
     return ListView(
-      padding: const EdgeInsets.fromLTRB(0, 0, 0, 40),
+      padding: EdgeInsets.zero,
       children: [
-        // Fotos de ocorrência
-        if (fotos.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 0, 0),
-            child: _photoStrip(fotos),
+        // ── Cabeçalho ──────────────────────────────────────────────
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          decoration: const BoxDecoration(
+            color: ProtoColors.surface,
+            border: Border(bottom: BorderSide(color: ProtoColors.border)),
           ),
-          const SizedBox(height: 16),
-        ],
-        Padding(
-          padding: EdgeInsets.fromLTRB(16, fotos.isEmpty ? 12 : 0, 16, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _headerCard(),
-              const SizedBox(height: 12),
-              _infoCard(),
+              Row(children: [
+                const ProtoPill(
+                    label: 'Desvio',
+                    bg: Color(0xFF4A390A),
+                    fg: ProtoColors.yellow),
+                const SizedBox(width: 8),
+                ProtoPill(
+                  label: statusLabel[d.status] ?? d.status,
+                  bg: ProtoColors.surface2,
+                  fg: ProtoColors.blue,
+                ),
+              ]),
+              const SizedBox(height: 10),
+              Text(d.titulo,
+                  style: const TextStyle(
+                      color: ProtoColors.text,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      height: 1.3)),
+              const SizedBox(height: 6),
+              Row(children: [
+                if (d.localizacaoNome != null) ...[
+                  const Icon(Icons.place_outlined,
+                      size: 13, color: ProtoColors.muted),
+                  const SizedBox(width: 4),
+                  Text(d.localizacaoNome!,
+                      style: const TextStyle(
+                          color: ProtoColors.muted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 10),
+                ],
+                const Icon(Icons.calendar_today_outlined,
+                    size: 13, color: ProtoColors.muted),
+                const SizedBox(width: 4),
+                Text(
+                  d.dataRegistro.isNotEmpty ? _formatDate(d.dataRegistro) : '—',
+                  style: const TextStyle(
+                      color: ProtoColors.muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700),
+                ),
+              ]),
+            ],
+          ),
+        ),
+
+        // ── Fotos de ocorrência ────────────────────────────────────
+        if (fotos.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 16, bottom: 4),
+            child: _sectionLabel('Evidências da Ocorrência'),
+          ),
+          SizedBox(
+            height: 190,
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              scrollDirection: Axis.horizontal,
+              itemCount: fotos.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, i) => ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  fotos[i],
+                  width: 260,
+                  height: 190,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 260,
+                    height: 190,
+                    color: ProtoColors.surface2,
+                    child: const Icon(Icons.broken_image_outlined,
+                        color: ProtoColors.muted, size: 40),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Identificação ──────────────────────────────────
+              _sectionLabel('Identificação'),
+              const SizedBox(height: 8),
+              ProtoCard(
+                child: Column(
+                  children: [
+                    _row2('Estabelecimento', d.estabelecimentoNome,
+                        'Localização', d.localizacaoNome ?? '—'),
+                    const Divider(height: 1, color: ProtoColors.border),
+                    _row2('Data', d.dataRegistro.isNotEmpty ? _formatDate(d.dataRegistro) : '—',
+                        'Registrado por', d.usuarioCriacaoNome ?? '—'),
+                    if (d.orientacaoRealizada != null) ...[
+                      const Divider(height: 1, color: ProtoColors.border),
+                      _rowFull('Orientação Realizada', d.orientacaoRealizada!),
+                    ],
+                  ],
+                ),
+              ),
+
               const SizedBox(height: 16),
-              _tratativasSection(),
+
+              // ── Responsáveis ───────────────────────────────────
+              _sectionLabel('Responsáveis'),
+              const SizedBox(height: 8),
+              ProtoCard(
+                child: Row(
+                  children: [
+                    Expanded(
+                        child: _responsavelCell(
+                            'RESP. PELO DESVIO',
+                            d.responsavelDesvioNome ?? '—')),
+                    Container(width: 1, height: 56, color: ProtoColors.border),
+                    Expanded(
+                        child: _responsavelCell(
+                            'RESP. PELA TRATATIVA',
+                            d.responsavelTratativaNome ?? '—')),
+                  ],
+                ),
+              ),
+
               const SizedBox(height: 20),
+
+              // ── Tratativas ─────────────────────────────────────
+              _tratativasSection(),
+
+              const SizedBox(height: 20),
+
+              // ── Ações ──────────────────────────────────────────
               if (!_busy) ..._actions(canTratar: canTratar, isApprover: isApprover),
               if (_busy) const Center(child: CircularProgressIndicator()),
+
+              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -145,83 +253,76 @@ class _BodyState extends ConsumerState<_Body> {
     );
   }
 
-  Widget _headerCard() {
-    return ProtoCard(
-      color: const Color(0xFF1A1408),
-      border: const Border.fromBorderSide(
-          BorderSide(color: Color(0xFF4A390A))),
-      child: Column(
+  Widget _sectionLabel(String label) => Text(
+        label.toUpperCase(),
+        style: const TextStyle(
+            color: ProtoColors.muted,
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: .5),
+      );
+
+  Widget _row2(String k1, String v1, String k2, String v2) => Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(children: [
+          Expanded(child: _cell(k1, v1)),
+          Expanded(child: _cell(k2, v2)),
+        ]),
+      );
+
+  Widget _rowFull(String k, String v) => Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        child: _cell(k, v),
+      );
+
+  Widget _cell(String label, String value) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            const ProtoPill(
-                label: 'Desvio', bg: Color(0xFF4A390A), fg: ProtoColors.yellow),
-            const SizedBox(width: 8),
-            ProtoPill(
-              label: statusLabel[d.status] ?? d.status,
-              bg: ProtoColors.surface2,
-              fg: ProtoColors.blue,
-            ),
-          ]),
-          const SizedBox(height: 10),
-          Text(d.titulo,
+          Text(label,
+              style: const TextStyle(
+                  color: ProtoColors.muted,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: .3)),
+          const SizedBox(height: 4),
+          Text(value,
               style: const TextStyle(
                   color: ProtoColors.text,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
-                  height: 1.3)),
-          if (d.dataRegistro.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(d.dataRegistro,
-                style: const TextStyle(
-                    color: ProtoColors.muted, fontSize: 11)),
-          ],
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700)),
         ],
-      ),
-    );
-  }
+      );
 
-  Widget _infoCard() {
-    return ProtoCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (d.orientacaoRealizada != null)
-            _line('Orientacao', d.orientacaoRealizada!),
-          if (d.localizacaoNome != null) _line('Local', d.localizacaoNome!),
-          if (d.responsavelDesvioNome != null)
-            _line('Resp. desvio', d.responsavelDesvioNome!),
-          if (d.responsavelTratativaNome != null)
-            _line('Resp. tratativa', d.responsavelTratativaNome!),
-          _line('Registro', d.dataRegistro),
-        ],
-      ),
-    );
-  }
-
-  Widget _line(String k, String v) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(
-            width: 110,
-            child: Text(k,
+  Widget _responsavelCell(String label, String nome) => Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label,
                 style: const TextStyle(
                     color: ProtoColors.muted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700)),
-          ),
-          Expanded(
-              child: Text(v,
-                  style: const TextStyle(
-                      color: ProtoColors.text, fontSize: 13))),
-        ]),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: .4)),
+            const SizedBox(height: 6),
+            Text(nome,
+                style: const TextStyle(
+                    color: ProtoColors.text,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900)),
+          ],
+        ),
       );
 
   Widget _tratativasSection() {
     if (d.tratativas.isEmpty) {
-      return const ProtoCard(
-        child: Text('Nenhuma tratativa ainda',
-            style: TextStyle(color: ProtoColors.muted, fontSize: 13)),
+      return ProtoCard(
+        child: Row(children: [
+          const Icon(Icons.inbox_outlined, color: ProtoColors.muted, size: 18),
+          const SizedBox(width: 10),
+          const Text('Nenhuma tratativa ainda',
+              style: TextStyle(color: ProtoColors.muted, fontSize: 13)),
+        ]),
       );
     }
     final byRodada = <int, List<TrativaDesvio>>{};
@@ -232,22 +333,22 @@ class _BodyState extends ConsumerState<_Body> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const ProtoSectionTitle('Tratativas'),
+        _sectionLabel('Tratativas'),
         const SizedBox(height: 8),
-        ...rodadas.map((r) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Rodada $r',
+        ...rodadas.map((r) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('Rodada $r',
                       style: const TextStyle(
                           color: ProtoColors.muted,
                           fontSize: 11,
                           fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 6),
-                  ...byRodada[r]!.map(_tratativaCard),
-                ],
-              ),
+                ),
+                ...byRodada[r]!.map(_tratativaCard),
+                const SizedBox(height: 8),
+              ],
             )),
       ],
     );
@@ -277,14 +378,12 @@ class _BodyState extends ConsumerState<_Body> {
             ]),
             const SizedBox(height: 6),
             Text(t.descricao,
-                style:
-                    const TextStyle(color: ProtoColors.muted, fontSize: 13)),
-            if (t.motivoReprovacao != null &&
-                t.motivoReprovacao!.isNotEmpty) ...[
+                style: const TextStyle(
+                    color: ProtoColors.muted, fontSize: 13)),
+            if (t.motivoReprovacao != null && t.motivoReprovacao!.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text('Motivo: ${t.motivoReprovacao}',
-                  style:
-                      const TextStyle(color: ProtoColors.red, fontSize: 12)),
+                  style: const TextStyle(color: ProtoColors.red, fontSize: 12)),
             ],
             if (t.evidencias.isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -300,9 +399,7 @@ class _BodyState extends ConsumerState<_Body> {
                       borderRadius: BorderRadius.circular(8),
                       child: url != null
                           ? Image.network(url,
-                              width: 64,
-                              height: 64,
-                              fit: BoxFit.cover,
+                              width: 64, height: 64, fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => _thumbFallback())
                           : _thumbFallback(),
                     );
@@ -323,72 +420,68 @@ class _BodyState extends ConsumerState<_Body> {
         child: const Icon(Icons.image_outlined, color: ProtoColors.muted),
       );
 
-  List<Widget> _actions(
-      {required bool canTratar, required bool isApprover}) {
+  List<Widget> _actions({required bool canTratar, required bool isApprover}) {
     switch (d.status) {
       case 'ABERTO':
         if (!canTratar) return [];
         return [
-          _primaryButton('Abrir tratativa', () => _run(
-              () => ref.read(desvioRepositoryProvider).abrirTratativa(d.id))),
+          _btn('Abrir tratativa', Icons.play_arrow_rounded, ProtoColors.blue,
+              () => _run(() => ref.read(desvioRepositoryProvider).abrirTratativa(d.id))),
         ];
       case 'AGUARDANDO_TRATATIVA':
         if (!canTratar) return [];
         return [
-          _primaryButton('Adicionar tratativa', _openAddTratativa),
+          _btn('Adicionar tratativa', Icons.add_rounded, ProtoColors.blue,
+              _openAddTratativa),
           const SizedBox(height: 10),
-          if (d.tratativas
-              .any((t) => t.rodada == d.rodadaAtual && t.status == 'PENDENTE'))
-            _secondaryButton(
-                'Submeter tratativas',
-                () => _run(() => ref
-                    .read(desvioRepositoryProvider)
-                    .submeterTratativa(
-                        d.id, const SubmeterTrativaDesvioRequest()))),
+          if (d.tratativas.any((t) => t.rodada == d.rodadaAtual && t.status == 'PENDENTE'))
+            _btn('Submeter tratativas', Icons.send_rounded, ProtoColors.green,
+                () => _run(() => ref.read(desvioRepositoryProvider).submeterTratativa(
+                    d.id, const SubmeterTrativaDesvioRequest()))),
         ];
       case 'AGUARDANDO_APROVACAO':
         if (!isApprover) return [];
         return [
-          _primaryButton(
-              'Aprovar',
-              () => _run(() => ref
-                  .read(desvioRepositoryProvider)
-                  .aprovar(d.id, const AprovarDesvioRequest()))),
+          _btn('Aprovar', Icons.check_circle_outline_rounded, ProtoColors.green,
+              () => _run(() => ref.read(desvioRepositoryProvider).aprovar(
+                  d.id, const AprovarDesvioRequest()))),
           const SizedBox(height: 10),
-          _secondaryButton('Reprovar', _openReprovar),
+          _btn('Reprovar', Icons.cancel_outlined, ProtoColors.red, _openReprovar),
         ];
       default:
         return [];
     }
   }
 
-  Widget _primaryButton(String label, VoidCallback onTap) => SizedBox(
-        height: 48,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: ProtoColors.blue,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+  Widget _btn(String label, IconData icon, Color color, VoidCallback onTap) =>
+      SizedBox(
+        height: 50,
+        width: double.infinity,
+        child: Material(
+          color: color.withValues(alpha: .15),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onTap,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: color.withValues(alpha: .5)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: color, size: 18),
+                  const SizedBox(width: 8),
+                  Text(label,
+                      style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14)),
+                ],
+              ),
+            ),
           ),
-          onPressed: onTap,
-          child: Text(label,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w900)),
-        ),
-      );
-
-  Widget _secondaryButton(String label, VoidCallback onTap) => SizedBox(
-        height: 48,
-        child: OutlinedButton(
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: ProtoColors.borderStrong),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-          ),
-          onPressed: onTap,
-          child: Text(label,
-              style: const TextStyle(
-                  color: ProtoColors.text, fontWeight: FontWeight.w800)),
         ),
       );
 
@@ -405,13 +498,11 @@ class _BodyState extends ConsumerState<_Body> {
       final ids = <String>[];
       for (final f in result.fotos) {
         final ev = await repo.uploadParaDesvio(
-          d.id,
-          f,
+          d.id, f,
           EvidenciaMetadata(
-            latitude: 0,
-            longitude: 0,
-            capturedAt: DateTime.now().millisecondsSinceEpoch,
-          ),
+              latitude: 0,
+              longitude: 0,
+              capturedAt: DateTime.now().millisecondsSinceEpoch),
           tipo: 'TRATATIVA',
         );
         ids.add(ev.id);
@@ -431,9 +522,7 @@ class _BodyState extends ConsumerState<_Body> {
     final pendentes = d.tratativas
         .where((t) => t.rodada == d.rodadaAtual && t.status == 'PENDENTE')
         .toList();
-    final motivos = {
-      for (final t in pendentes) t.id: TextEditingController()
-    };
+    final motivos = {for (final t in pendentes) t.id: TextEditingController()};
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -454,8 +543,7 @@ class _BodyState extends ConsumerState<_Body> {
                                   color: ProtoColors.text, fontSize: 13)),
                           TextField(
                             controller: motivos[t.id],
-                            style:
-                                const TextStyle(color: ProtoColors.text),
+                            style: const TextStyle(color: ProtoColors.text),
                             decoration:
                                 const InputDecoration(hintText: 'Motivo'),
                           ),
@@ -481,9 +569,7 @@ class _BodyState extends ConsumerState<_Body> {
             trativaId: t.id, motivo: motivos[t.id]!.text.trim()))
         .where((i) => i.motivo.isNotEmpty)
         .toList();
-    for (final c in motivos.values) {
-      c.dispose();
-    }
+    for (final c in motivos.values) c.dispose();
     if (itens.isEmpty) return;
     await _run(() => ref
         .read(desvioRepositoryProvider)
@@ -518,16 +604,14 @@ class _AddTratativaSheetState extends State<_AddTratativaSheet> {
   }
 
   Future<void> _take() async {
-    final x =
-        await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+    final x = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
     if (x != null) setState(() => _fotos.add(File(x.path)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-          20, 18, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(20, 18, 20, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -551,8 +635,7 @@ class _AddTratativaSheetState extends State<_AddTratativaSheet> {
             ProtoIconButton(icon: Icons.camera_alt_outlined, onTap: _take),
             const SizedBox(width: 10),
             Text('${_fotos.length} foto(s)',
-                style:
-                    const TextStyle(color: ProtoColors.muted, fontSize: 12)),
+                style: const TextStyle(color: ProtoColors.muted, fontSize: 12)),
           ]),
           const SizedBox(height: 16),
           SizedBox(
@@ -561,6 +644,7 @@ class _AddTratativaSheetState extends State<_AddTratativaSheet> {
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: ProtoColors.blue,
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
@@ -569,18 +653,14 @@ class _AddTratativaSheetState extends State<_AddTratativaSheet> {
                     _descricao.text.trim().isEmpty ||
                     _fotos.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text(
-                          'Titulo, descricao e ao menos 1 foto sao obrigatorios')));
+                      content: Text('Titulo, descricao e 1 foto obrigatorios')));
                   return;
                 }
-                Navigator.pop(
-                    context,
-                    _NovaTratativa(
-                        _titulo.text.trim(), _descricao.text.trim(), _fotos));
+                Navigator.pop(context,
+                    _NovaTratativa(_titulo.text.trim(), _descricao.text.trim(), _fotos));
               },
               child: const Text('Salvar tratativa',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w900)),
+                  style: TextStyle(fontWeight: FontWeight.w900)),
             ),
           ),
         ],

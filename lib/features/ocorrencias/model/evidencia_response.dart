@@ -10,8 +10,8 @@ class EvidenciaResponse {
   });
 
   factory EvidenciaResponse.fromJson(Map<String, dynamic> json) => EvidenciaResponse(
-        id: json['id'] as String,
-        url: json['url'] as String?,
-        tipo: json['tipo'] as String? ?? 'FOTO',
+        id: json['id'].toString(),
+        url: json['urlArquivo'] as String?,
+        tipo: json['tipoEvidencia'] as String? ?? 'FOTO',
       );
 }
