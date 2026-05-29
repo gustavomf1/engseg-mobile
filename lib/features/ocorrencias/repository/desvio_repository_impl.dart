@@ -38,10 +38,9 @@ final desvioEvidenciasProvider = FutureProvider.family<List<String>, String>(
       );
       return (r.data ?? [])
           .map((e) {
-            final raw = (e as Map<String, dynamic>)['urlArquivo'] as String? ?? '';
-            if (raw.isEmpty) return '';
-            // URL relativa → prefixar com base URL da API
-            return raw.startsWith('/') ? '${AppConfig.apiBaseUrl}$raw' : raw;
+            final id = (e as Map<String, dynamic>)['id'];
+            if (id == null) return '';
+            return '${AppConfig.apiBaseUrl}/api/evidencias/$id/download';
           })
           .where((url) => url.isNotEmpty)
           .toList();

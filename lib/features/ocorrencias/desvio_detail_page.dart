@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -17,6 +18,11 @@ import 'model/evidencia_metadata.dart';
 import 'model/trativa_desvio.dart';
 import 'repository/desvio_repository_impl.dart';
 import 'repository/evidencia_repository_impl.dart';
+
+final _jwtTokenProvider = FutureProvider<String?>((ref) async {
+  const storage = FlutterSecureStorage();
+  return storage.read(key: 'jwt_token');
+});
 
 String _formatDate(String iso) {
   try {
@@ -185,7 +191,7 @@ class _BodyState extends ConsumerState<_Body> {
   bool _busy = false;
 
   DesvioDetail get d => widget.d;
-  String? get _token => ref.read(authProvider).valueOrNull?.token;
+  String? get _token => ref.read(_jwtTokenProvider).valueOrNull;
 
   Future<void> _run(Future<void> Function() action) async {
     setState(() => _busy = true);
@@ -207,7 +213,7 @@ class _BodyState extends ConsumerState<_Body> {
   Widget build(BuildContext context) {
     final fotos = ref.watch(desvioEvidenciasProvider(d.id)).valueOrNull ?? [];
     final session = ref.watch(authProvider).valueOrNull;
-    final token = session?.token;
+    final token = ref.watch(_jwtTokenProvider).valueOrNull;
     final isResponsavelTratativa =
         session != null && session.id == d.responsavelTratativaId;
     final isResponsavelDesvio =

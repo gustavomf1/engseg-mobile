@@ -7,12 +7,10 @@ class EvidenciaInfo {
   const EvidenciaInfo({required this.id, required this.nome, this.url});
 
   factory EvidenciaInfo.fromJson(Map<String, dynamic> j) {
-    final raw = j['urlArquivo'] as String?;
-    final url = raw != null && raw.startsWith('/')
-        ? '${AppConfig.apiBaseUrl}$raw'
-        : raw;
+    final id = j['id'] as String;
+    final url = '${AppConfig.apiBaseUrl}/api/evidencias/$id/download';
     return EvidenciaInfo(
-      id: j['id'] as String,
+      id: id,
       nome: j['nome'] as String? ?? '',
       url: url,
     );
