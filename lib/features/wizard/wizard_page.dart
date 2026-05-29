@@ -1,17 +1,21 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../shared/providers/capture_provider.dart';
 import '../../shared/widgets/prototype_ui.dart';
 import '../auth/provider/auth_provider.dart';
 import '../ocorrencias/model/criar_desvio_request.dart';
 import '../ocorrencias/model/criar_nc_request.dart';
+import '../ocorrencias/model/evidencia_metadata.dart';
 import '../ocorrencias/model/norma.dart';
 import '../ocorrencias/model/usuario_summary.dart';
 import '../ocorrencias/repository/desvio_repository_impl.dart';
+import '../ocorrencias/repository/evidencia_repository_impl.dart';
 import '../ocorrencias/repository/nc_repository_impl.dart';
 import '../ocorrencias/repository/support_repository_impl.dart';
 
@@ -181,7 +185,7 @@ class _WizardPageState extends ConsumerState<WizardPage> {
   }
 
   Future<void> _publicar() async {
-    final workspaceId = ref.read(workspaceProvider);
+    final workspaceId = ref.read(workspaceProvider)?.estabelecimento.id;
     if (workspaceId == null) {
       throw Exception('Nenhum estabelecimento selecionado');
     }
@@ -200,8 +204,11 @@ class _WizardPageState extends ConsumerState<WizardPage> {
         regraDeOuro: goldenRule,
         reincidencia: _reincidencia,
         normaIds: _selectedNormaIds.toList(),
+        responsavelNcId: _responsavel?.id,
+        responsavelTrativaId: _responsavelTratativa?.id,
       );
       final nc = await ref.read(ncRepositoryProvider).criar(request);
+      await _uploadPhotos(nc.id, isNc: true);
       if (mounted) {
         ref.invalidate(ncListProvider(workspaceId));
         context.go('/oc/${nc.id}');
@@ -219,13 +226,35 @@ class _WizardPageState extends ConsumerState<WizardPage> {
         responsavelDesvioId: _responsavel?.id,
         responsavelTratativaId: _responsavelTratativa?.id,
       );
-      final desvio =
-          await ref.read(desvioRepositoryProvider).criar(request);
+      final desvio = await ref.read(desvioRepositoryProvider).criar(request);
+      final desvioId = desvio['id'] as String;
+      await _uploadPhotos(desvioId, isNc: false);
       if (mounted) {
         ref.invalidate(desvioListProvider(workspaceId));
-        context.go('/oc/${desvio['id']}');
+        context.go('/desvio/$desvioId');
       }
     }
+  }
+
+  Future<void> _uploadPhotos(String id, {required bool isNc}) async {
+    final photos = ref.read(captureProvider).map((x) => File(x.path)).toList();
+    if (photos.isEmpty) return;
+    final extra = widget.extra ?? {};
+    final meta = EvidenciaMetadata(
+      latitude: (extra['latitude'] as num?)?.toDouble() ?? 0,
+      longitude: (extra['longitude'] as num?)?.toDouble() ?? 0,
+      capturedAt: (extra['capturedAt'] as int?) ?? DateTime.now().millisecondsSinceEpoch,
+      cidade: extra['cidade'] as String?,
+    );
+    final repo = ref.read(evidenciaRepositoryProvider);
+    for (final f in photos) {
+      if (isNc) {
+        await repo.uploadParaNc(id, f, meta);
+      } else {
+        await repo.uploadParaDesvio(id, f, meta);
+      }
+    }
+    ref.read(captureProvider.notifier).clear();
   }
 }
 
@@ -257,8 +286,6 @@ class _WizardHeader extends StatelessWidget {
           border: Border(bottom: BorderSide(color: ProtoColors.border))),
       child: Column(
         children: [
-          const ProtoStatusBar(),
-          const SizedBox(height: 8),
           Row(
             children: [
               ProtoIconButton(icon: Icons.chevron_left_rounded, onTap: onBack),
@@ -392,7 +419,7 @@ class _DescriptionStep extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final workspaceId = ref.watch(workspaceProvider);
+    final workspaceId = ref.watch(workspaceProvider)?.estabelecimento.id;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
