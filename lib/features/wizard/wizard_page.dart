@@ -255,9 +255,9 @@ class _WizardPageState extends ConsumerState<WizardPage> {
         context.go('/oc/${nc.id}');
       }
     } else {
-      final orientacao = _orientacaoCtrl.text.trim().isEmpty
+      final orientacao = _descCtrl.text.trim().isEmpty
           ? null
-          : _orientacaoCtrl.text.trim();
+          : _descCtrl.text.trim();
       final request = CriarDesvioRequest(
         estabelecimentoId: workspaceId,
         titulo: titulo.isEmpty ? 'Novo Desvio' : titulo,
@@ -437,12 +437,12 @@ class _DescriptionStep extends ConsumerWidget {
         const Text('Resumo curto que aparecerá nas listagens',
             style: TextStyle(color: ProtoColors.muted2, fontSize: 11)),
         const SizedBox(height: 22),
-        _Label(isNc ? 'Descrição Detalhada' : 'Descrição da Situação'),
+        _Label(isNc ? 'Descrição Detalhada' : 'Orientação Realizada'),
         _TextField(
           controller: descCtrl,
           hint: isNc
               ? 'Descreva fato, local e impacto — mínimo 20 caracteres.'
-              : 'Descreva a situação observada.',
+              : 'Descreva a orientação dada ao responsável pelo desvio...',
           maxLines: 5,
           height: 110,
         ),
@@ -626,17 +626,6 @@ class _DescriptionStep extends ConsumerWidget {
           ),
         ] else ...[
           const SizedBox(height: 22),
-          const _Label('Orientação Realizada'),
-          _TextField(
-            controller: orientacaoCtrl,
-            hint: 'Descreva a orientação dada ao responsável pelo desvio...',
-            maxLines: 4,
-            height: 88,
-          ),
-          const SizedBox(height: 6),
-          const Text('Obrigatório para publicar.',
-              style: TextStyle(color: ProtoColors.muted2, fontSize: 11)),
-          const SizedBox(height: 22),
           const _Label('Responsáveis'),
           const Text('Responsável pelo desvio',
               style: TextStyle(
@@ -679,16 +668,6 @@ class _DescriptionStep extends ConsumerWidget {
             const _SelectRow(
                 icon: Icons.person_add_alt_outlined,
                 text: 'Selecionar responsável'),
-          const SizedBox(height: 22),
-          const _Label('Sinalizações'),
-          _SignalRow(
-            checked: regraDeOuro,
-            title: 'Regra de Ouro',
-            subtitle:
-                'Marque se a ocorrência viola uma regra crítica de segurança',
-            color: ProtoColors.red,
-            onTap: () => onRegraDeOuro(!regraDeOuro),
-          ),
         ],
       ],
     );
