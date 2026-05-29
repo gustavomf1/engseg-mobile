@@ -273,7 +273,7 @@ class _WizardPageState extends ConsumerState<WizardPage> {
       await _uploadPhotos(desvioId, isNc: false);
       if (mounted) {
         ref.invalidate(desvioListProvider(workspaceId));
-        context.go('/desvio/$desvioId');
+        context.go('/desvios');
       }
     }
   }
