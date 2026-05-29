@@ -2320,52 +2320,57 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
                             color: ProtoColors.muted, fontSize: 12)),
                   ),
                   const SizedBox(height: 16),
-                  // Rows de dados reais
-                  Container(
-                    decoration: BoxDecoration(
-                      color: ProtoColors.surface2,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: ProtoColors.border),
-                    ),
-                    child: Column(
-                      children: [
-                        for (int i = 0; i < widget.rows.length; i++) ...[
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(
-                                  width: 110,
-                                  child: Text(widget.rows[i].label,
-                                      style: const TextStyle(
-                                          color: ProtoColors.muted,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700)),
+                  // Rows de dados reais — rolável se muitos itens
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 280),
+                    child: SingleChildScrollView(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: ProtoColors.surface2,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: ProtoColors.border),
+                        ),
+                        child: Column(
+                          children: [
+                            for (int i = 0; i < widget.rows.length; i++) ...[
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 10),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SizedBox(
+                                      width: 110,
+                                      child: Text(widget.rows[i].label,
+                                          style: const TextStyle(
+                                              color: ProtoColors.muted,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700)),
+                                    ),
+                                    Expanded(
+                                      child: Text(widget.rows[i].value,
+                                          style: TextStyle(
+                                              color: widget.rows[i].red
+                                                  ? ProtoColors.red
+                                                  : ProtoColors.text,
+                                              fontSize: 13,
+                                              fontWeight: widget.rows[i].red
+                                                  ? FontWeight.w800
+                                                  : FontWeight.w600)),
+                                    ),
+                                  ],
                                 ),
-                                Expanded(
-                                  child: Text(widget.rows[i].value,
-                                      style: TextStyle(
-                                          color: widget.rows[i].red
-                                              ? ProtoColors.red
-                                              : ProtoColors.text,
-                                          fontSize: 13,
-                                          fontWeight: widget.rows[i].red
-                                              ? FontWeight.w800
-                                              : FontWeight.w600)),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (i < widget.rows.length - 1)
-                            const Divider(
-                                height: 1,
-                                color: ProtoColors.border,
-                                indent: 14,
-                                endIndent: 14),
-                        ],
-                      ],
+                              ),
+                              if (i < widget.rows.length - 1)
+                                const Divider(
+                                    height: 1,
+                                    color: ProtoColors.border,
+                                    indent: 14,
+                                    endIndent: 14),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                   if (errorMsg != null) ...[
