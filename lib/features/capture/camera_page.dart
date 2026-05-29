@@ -44,14 +44,14 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     Position? position;
     String? cidade;
 
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
 
-    if (permission == LocationPermission.whileInUse ||
-        permission == LocationPermission.always) {
-      try {
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
         position = await Geolocator.getCurrentPosition(
           locationSettings:
               const LocationSettings(accuracy: LocationAccuracy.high),
@@ -61,9 +61,9 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           position.longitude,
         );
         cidade = placemarks.firstOrNull?.locality;
-      } catch (_) {
-        // GPS indisponível — continua sem coordenadas
       }
+    } catch (_) {
+      // GPS indisponível — continua sem coordenadas
     }
 
     if (!mounted) return;
