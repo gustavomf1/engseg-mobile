@@ -12,6 +12,7 @@ import '../auth/provider/auth_provider.dart';
 import '../ocorrencias/model/criar_desvio_request.dart';
 import '../ocorrencias/model/criar_nc_request.dart';
 import '../ocorrencias/model/evidencia_metadata.dart';
+import '../ocorrencias/model/localizacao.dart';
 import '../ocorrencias/model/nc_summary.dart';
 import '../ocorrencias/model/norma.dart';
 import '../ocorrencias/model/usuario_summary.dart';
@@ -123,6 +124,8 @@ class _WizardPageState extends ConsumerState<WizardPage> {
                           setState(() => _responsavelTratativa = u),
                       ncAnterior: _ncAnterior,
                       onNcAnterior: (nc) => setState(() => _ncAnterior = nc),
+                      localizacaoId: _localizacaoId,
+                      onLocalizacao: (id) => setState(() => _localizacaoId = id),
                     ),
                   if (isNc && step == 2)
                     _RiskStep(
@@ -240,6 +243,7 @@ class _WizardPageState extends ConsumerState<WizardPage> {
         regraDeOuro: _regraDeOuro,
         reincidencia: _reincidencia,
         normaIds: _selectedNormaIds.toList(),
+        localizacaoId: _localizacaoId,
         responsavelNcId: _responsavel?.id,
         responsavelTrativaId: _responsavelTratativa?.id,
         ncAnteriorId: _ncAnterior?.id,
@@ -258,6 +262,7 @@ class _WizardPageState extends ConsumerState<WizardPage> {
         estabelecimentoId: workspaceId,
         titulo: titulo.isEmpty ? 'Novo Desvio' : titulo,
         descricao: descricao,
+        localizacaoId: _localizacaoId,
         orientacaoRealizada: orientacao,
         regraDeOuro: _regraDeOuro,
         responsavelDesvioId: _responsavel?.id,
@@ -440,6 +445,8 @@ class _DescriptionStep extends ConsumerWidget {
   final ValueChanged<UsuarioSummary?> onResponsavelTratativa;
   final NcSummary? ncAnterior;
   final ValueChanged<NcSummary?> onNcAnterior;
+  final String? localizacaoId;
+  final ValueChanged<String?> onLocalizacao;
 
   const _DescriptionStep({
     required this.isNc,
@@ -456,6 +463,8 @@ class _DescriptionStep extends ConsumerWidget {
     required this.onResponsavelTratativa,
     required this.ncAnterior,
     required this.onNcAnterior,
+    required this.localizacaoId,
+    required this.onLocalizacao,
   });
 
   @override
@@ -490,6 +499,23 @@ class _DescriptionStep extends ConsumerWidget {
         const SizedBox(height: 6),
         const Text('Descreva fato, local e impacto — mínimo 20 caracteres.',
             style: TextStyle(color: ProtoColors.muted2, fontSize: 11)),
+        if (workspaceId != null) ...[
+          const SizedBox(height: 18),
+          const _Label('Localização'),
+          const SizedBox(height: 6),
+          ref.watch(localizacoesProvider(workspaceId)).when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (locs) {
+                  if (locs.isEmpty) return const SizedBox.shrink();
+                  return _LocationDropdown(
+                    items: locs,
+                    selected: localizacaoId,
+                    onChanged: onLocalizacao,
+                  );
+                },
+              ),
+        ],
         if (isNc) ...[
           const SizedBox(height: 22),
           const _Label('Responsáveis'),
@@ -691,7 +717,9 @@ class _DescriptionStep extends ConsumerWidget {
           if (workspaceId != null)
             _UserPickerRow(
               workspaceId: workspaceId,
-              filterPerfis: const ['ENGENHEIRO', 'TECNICO', 'EXTERNO'],
+              filterPerfis: const ['ENGENHEIRO', 'TECNICO'],
+              combinedEmpresaId: empresaFilhaId,
+              combinedFilterPerfis: const ['EXTERNO', 'ENGENHEIRO'],
               selected: responsavelTratativa,
               icon: Icons.person_add_alt_outlined,
               hint: 'Selecionar responsável',
@@ -729,8 +757,11 @@ class _UserPickerRow extends ConsumerWidget {
   final ValueChanged<UsuarioSummary?> onSelected;
   // Se fornecido, busca por empresaId em vez de workspaceId
   final String? empresaId;
-  // Se fornecido, filtra por perfil
+  // Se fornecido, filtra por perfil na lista principal
   final List<String>? filterPerfis;
+  // Se fornecido, combina com lista de empresa filha filtrada por estes perfis
+  final String? combinedEmpresaId;
+  final List<String>? combinedFilterPerfis;
 
   const _UserPickerRow({
     required this.workspaceId,
@@ -740,14 +771,35 @@ class _UserPickerRow extends ConsumerWidget {
     required this.onSelected,
     this.empresaId,
     this.filterPerfis,
+    this.combinedEmpresaId,
+    this.combinedFilterPerfis,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final usuariosAsync = empresaId != null
+    final mainAsync = empresaId != null
         ? ref.watch(usuariosPorEmpresaProvider(empresaId!))
         : ref.watch(usuariosProvider(workspaceId));
-    return usuariosAsync.when(
+    final extraAsync = combinedEmpresaId != null
+        ? ref.watch(usuariosPorEmpresaProvider(combinedEmpresaId!))
+        : const AsyncData<List<UsuarioSummary>>([]);
+
+    // Combina quando os dois providers estão prontos
+    final combined = mainAsync.whenData((main) {
+      final extra = extraAsync.valueOrNull ?? [];
+      final mainFiltered = filterPerfis != null
+          ? main.where((u) => filterPerfis!.contains(u.perfil)).toList()
+          : main;
+      final extraFiltered = combinedFilterPerfis != null
+          ? extra.where((u) => combinedFilterPerfis!.contains(u.perfil)).toList()
+          : extra;
+      final ids = <String>{};
+      return [...mainFiltered, ...extraFiltered]
+          .where((u) => ids.add(u.id))
+          .toList();
+    });
+
+    return combined.when(
       loading: () => const SizedBox(
           height: 46,
           child: Center(
@@ -758,9 +810,7 @@ class _UserPickerRow extends ConsumerWidget {
       error: (_, __) => const _SelectRow(
           icon: Icons.error_outline, text: 'Erro ao carregar usuários'),
       data: (todos) {
-        final usuarios = filterPerfis != null
-            ? todos.where((u) => filterPerfis!.contains(u.perfil)).toList()
-            : todos;
+        final usuarios = todos;
         return GestureDetector(
         onTap: () => _showPicker(context, usuarios),
         child: Container(
@@ -2727,6 +2777,45 @@ class _TypeBox extends StatelessWidget {
                     fontSize: 9,
                     height: 1.25))
           ])));
+}
+
+class _LocationDropdown extends StatelessWidget {
+  final List<Localizacao> items;
+  final String? selected;
+  final ValueChanged<String?> onChanged;
+  const _LocationDropdown(
+      {required this.items, required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: ProtoColors.surface2,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: ProtoColors.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String?>(
+          isExpanded: true,
+          dropdownColor: ProtoColors.surface,
+          value: selected,
+          hint: const Text('Selecionar localizacao (opcional)',
+              style: TextStyle(color: ProtoColors.muted, fontSize: 13)),
+          style: const TextStyle(color: ProtoColors.text, fontSize: 14),
+          items: [
+            const DropdownMenuItem(
+                value: null,
+                child: Text('— Nenhuma',
+                    style: TextStyle(color: ProtoColors.muted, fontSize: 13))),
+            ...items.map((l) =>
+                DropdownMenuItem(value: l.id, child: Text(l.nome))),
+          ],
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
 }
 
 class _SelectRow extends StatelessWidget {
