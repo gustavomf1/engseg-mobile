@@ -2,6 +2,7 @@ class CriarDesvioRequest {
   final String estabelecimentoId;
   final String titulo;
   final String? descricao;
+  final String? localizacaoId;
   final String? orientacaoRealizada;
   final bool regraDeOuro;
   final String? responsavelDesvioId;
@@ -13,6 +14,7 @@ class CriarDesvioRequest {
     required this.estabelecimentoId,
     required this.titulo,
     this.descricao,
+    this.localizacaoId,
     this.orientacaoRealizada,
     this.regraDeOuro = false,
     this.responsavelDesvioId,
@@ -24,6 +26,7 @@ class CriarDesvioRequest {
   Map<String, dynamic> toJson() => {
     'estabelecimentoId': estabelecimentoId,
     'titulo': titulo,
+    if (localizacaoId != null) 'localizacaoId': localizacaoId,
     if (descricao != null) 'descricao': descricao,
     if (orientacaoRealizada != null) 'orientacaoRealizada': orientacaoRealizada,
     'regraDeOuro': regraDeOuro,

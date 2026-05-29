@@ -6,6 +6,9 @@ class CriarNcRequest {
   final int probabilidade;
   final bool regraDeOuro;
   final bool reincidencia;
+  final String? localizacaoId;
+  final String? responsavelNcId;
+  final String? responsavelTrativaId;
   final List<String> normaIds;
   final List<String> emailsManuais;
   final List<String> emailsPadraoExcluidos;
@@ -18,6 +21,9 @@ class CriarNcRequest {
     required this.probabilidade,
     this.regraDeOuro = false,
     this.reincidencia = false,
+    this.localizacaoId,
+    this.responsavelNcId,
+    this.responsavelTrativaId,
     this.normaIds = const [],
     this.emailsManuais = const [],
     this.emailsPadraoExcluidos = const [],
@@ -31,6 +37,9 @@ class CriarNcRequest {
         'probabilidade': probabilidade,
         'regraDeOuro': regraDeOuro,
         'reincidencia': reincidencia,
+        if (localizacaoId != null) 'localizacaoId': localizacaoId,
+        if (responsavelNcId != null) 'responsavelNcId': responsavelNcId,
+        if (responsavelTrativaId != null) 'responsavelTrativaId': responsavelTrativaId,
         'normaIds': normaIds,
         'emailsManuais': emailsManuais,
         'emailsPadraoExcluidos': emailsPadraoExcluidos,
