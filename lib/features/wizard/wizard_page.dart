@@ -49,6 +49,9 @@ class _WizardPageState extends ConsumerState<WizardPage> {
   // Normas selection (IDs)
   final Set<String> _selectedNormaIds = {};
 
+  // Localização
+  String? _localizacaoId;
+
   // Responsável pickers
   UsuarioSummary? _responsavel;
   UsuarioSummary? _responsavelTratativa;
