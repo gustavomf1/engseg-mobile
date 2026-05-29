@@ -6,6 +6,7 @@ import '../model/desvio_detail.dart';
 import '../model/criar_desvio_request.dart';
 import '../model/desvio_action_requests.dart';
 import 'desvio_repository.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/network/dio_client.dart';
 
 final desvioRepositoryProvider = Provider<DesvioRepository>((ref) {
@@ -36,7 +37,12 @@ final desvioEvidenciasProvider = FutureProvider.family<List<String>, String>(
         queryParameters: {'tipo': 'OCORRENCIA'},
       );
       return (r.data ?? [])
-          .map((e) => (e as Map<String, dynamic>)['urlArquivo'] as String? ?? '')
+          .map((e) {
+            final raw = (e as Map<String, dynamic>)['urlArquivo'] as String? ?? '';
+            if (raw.isEmpty) return '';
+            // URL relativa → prefixar com base URL da API
+            return raw.startsWith('/') ? '${AppConfig.apiBaseUrl}$raw' : raw;
+          })
           .where((url) => url.isNotEmpty)
           .toList();
     } catch (_) {
