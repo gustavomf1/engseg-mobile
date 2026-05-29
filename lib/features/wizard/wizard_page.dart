@@ -37,7 +37,6 @@ class _WizardPageState extends ConsumerState<WizardPage> {
   // Risk step state
   int severity = 5;
   int probability = 4;
-  bool goldenRule = true;
 
   // Description step state (lifted from _DescriptionStep)
   final _tituloCtrl = TextEditingController();
@@ -131,10 +130,8 @@ class _WizardPageState extends ConsumerState<WizardPage> {
                     _RiskStep(
                       severity: severity,
                       probability: probability,
-                      goldenRule: goldenRule,
                       onSeverity: (s) => setState(() => severity = s),
                       onProbability: (p) => setState(() => probability = p),
-                      onRule: (v) => setState(() => goldenRule = v),
                     ),
                   if (isNc && step == 3)
                     _NormsStep(
@@ -207,7 +204,7 @@ class _WizardPageState extends ConsumerState<WizardPage> {
         descricao: descricao,
         severidade: severity,
         probabilidade: probability,
-        regraDeOuro: goldenRule,
+        regraDeOuro: _regraDeOuro,
         reincidencia: _reincidencia,
         normaIds: _selectedNormaIds.toList(),
         responsavelNcId: _responsavel?.id,
@@ -1012,18 +1009,14 @@ String _riskLabel(int score) {
 class _RiskStep extends StatelessWidget {
   final int severity;
   final int probability;
-  final bool goldenRule;
   final ValueChanged<int> onSeverity;
   final ValueChanged<int> onProbability;
-  final ValueChanged<bool> onRule;
 
   const _RiskStep({
     required this.severity,
     required this.probability,
-    required this.goldenRule,
     required this.onSeverity,
     required this.onProbability,
-    required this.onRule,
   });
 
   @override
@@ -1160,75 +1153,6 @@ class _RiskStep extends StatelessWidget {
                   ),
                 ),
               ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        ProtoCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _Label('Regra de Ouro'),
-              GestureDetector(
-                onTap: () => onRule(!goldenRule),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: goldenRule
-                        ? ProtoColors.red.withValues(alpha: .07)
-                        : ProtoColors.surface2,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                        color: goldenRule
-                            ? ProtoColors.red
-                            : ProtoColors.border),
-                  ),
-                  child: Row(children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: goldenRule
-                            ? ProtoColors.red
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(5),
-                        border: Border.all(
-                            color: goldenRule
-                                ? ProtoColors.red
-                                : ProtoColors.borderStrong,
-                            width: 1.5),
-                      ),
-                      child: goldenRule
-                          ? const Icon(Icons.check,
-                              color: Colors.white, size: 13)
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          Text('Regra de Ouro violada',
-                              style: TextStyle(
-                                  color: goldenRule
-                                      ? ProtoColors.red
-                                      : ProtoColors.text,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 2),
-                          const Text(
-                              'Marque se a ocorrência viola uma regra crítica de segurança',
-                              style: TextStyle(
-                                  color: ProtoColors.muted,
-                                  fontSize: 11,
-                                  height: 1.3)),
-                        ])),
-                  ]),
-                ),
-              ),
             ],
           ),
         ),
