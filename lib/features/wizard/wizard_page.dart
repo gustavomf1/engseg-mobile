@@ -33,7 +33,7 @@ class WizardPage extends ConsumerStatefulWidget {
 
 class _WizardPageState extends ConsumerState<WizardPage> {
   late final bool isNc = widget.tipo.toLowerCase() == 'nc';
-  late int step = isNc ? 1 : 0;
+  late int step = 0;
 
   // Risk step state
   int severity = 5;
@@ -63,21 +63,19 @@ class _WizardPageState extends ConsumerState<WizardPage> {
   bool _publishing = false;
   String? _publishError;
 
-  int get stepCount => isNc ? 5 : 3;
+  int get stepCount => isNc ? 4 : 2;
 
   String get stepTitle {
     if (!isNc) {
       return switch (step) {
-        0 => 'Identificação',
-        1 => 'Descrição',
+        0 => 'Descrição',
         _ => 'Revisão',
       };
     }
     return switch (step) {
-      0 => 'Tipo & Local',
-      1 => 'Descrição',
-      2 => 'Matriz de Risco',
-      3 => 'Normas',
+      0 => 'Descrição',
+      1 => 'Matriz de Risco',
+      2 => 'Normas',
       _ => 'Revisão',
     };
   }
@@ -109,8 +107,7 @@ class _WizardPageState extends ConsumerState<WizardPage> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
                 children: [
-                  if (step == 0) _TypeLocalStep(isNc: isNc),
-                  if (step == 1)
+                  if (step == 0)
                     _DescriptionStep(
                       isNc: isNc,
                       tituloCtrl: _tituloCtrl,
@@ -130,14 +127,14 @@ class _WizardPageState extends ConsumerState<WizardPage> {
                       localizacaoId: _localizacaoId,
                       onLocalizacao: (id) => setState(() => _localizacaoId = id),
                     ),
-                  if (isNc && step == 2)
+                  if (isNc && step == 1)
                     _RiskStep(
                       severity: severity,
                       probability: probability,
                       onSeverity: (s) => setState(() => severity = s),
                       onProbability: (p) => setState(() => probability = p),
                     ),
-                  if (isNc && step == 3)
+                  if (isNc && step == 2)
                     _NormsStep(
                       selectedIds: _selectedNormaIds,
                       onToggle: (id, selected) => setState(() {
@@ -148,7 +145,7 @@ class _WizardPageState extends ConsumerState<WizardPage> {
                         }
                       }),
                     ),
-                  if ((isNc && step == 4) || (!isNc && step == 2))
+                  if ((isNc && step == 3) || (!isNc && step == 1))
                     _ReviewStep(
                       isNc: isNc,
                       titulo: _tituloCtrl.text.trim(),
@@ -380,57 +377,7 @@ class _WizardHeader extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Step 0: Type & Local
-// ---------------------------------------------------------------------------
-
-class _TypeLocalStep extends StatelessWidget {
-  final bool isNc;
-  const _TypeLocalStep({required this.isNc});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _Label('Tipo'),
-        Row(
-          children: [
-            Expanded(
-                child: _TypeBox(
-                    title: 'Nao Conformidade',
-                    sub: 'Violacao de norma · matriz\n5x5',
-                    selected: isNc,
-                    color: ProtoColors.red)),
-            const SizedBox(width: 8),
-            Expanded(
-                child: _TypeBox(
-                    title: 'Desvio',
-                    sub: 'Conduta ou condicao',
-                    selected: !isNc,
-                    color: ProtoColors.yellow)),
-          ],
-        ),
-        const SizedBox(height: 18),
-        const _Label('Estabelecimento'),
-        const _SelectRow(
-            icon: Icons.business_outlined, text: 'Refinaria Paulinia'),
-        const SizedBox(height: 14),
-        const _Label('Localizacao especifica'),
-        const _SelectRow(
-            icon: Icons.place_outlined, text: 'Bloco C - fachada norte'),
-        const SizedBox(height: 8),
-        Text('GPS capturado: -22.7260, -47.1486 ±3m',
-            style: TextStyle(
-                color: isNc ? ProtoColors.muted : ProtoColors.orange,
-                fontSize: 10,
-                fontWeight: FontWeight.w700)),
-      ],
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Step 1: Description — now receives state from parent
+// Step 0: Description — now receives state from parent
 // ---------------------------------------------------------------------------
 
 class _DescriptionStep extends ConsumerWidget {
@@ -2583,58 +2530,6 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
 // Misc widgets
 // ---------------------------------------------------------------------------
 
-class _SendingEnvelope extends StatelessWidget {
-  const _SendingEnvelope();
-  @override
-  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
-        tween: Tween(begin: .88, end: 1),
-        duration: const Duration(milliseconds: 900),
-        curve: Curves.easeInOut,
-        builder: (_, v, __) => Transform.scale(
-            scale: v,
-            child: Container(
-                width: 94,
-                height: 94,
-                decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                        color: ProtoColors.blue.withValues(alpha: .35),
-                        width: 2)),
-                child: const Icon(Icons.mail_outline_rounded,
-                    color: ProtoColors.blue, size: 48))),
-      );
-}
-
-class _ProgressLine extends StatelessWidget {
-  final bool done;
-  final bool active;
-  final String label;
-  const _ProgressLine(
-      {required this.done, required this.label, this.active = false});
-  @override
-  Widget build(BuildContext context) => Padding(
-      padding: const EdgeInsets.only(bottom: 9),
-      child: Row(children: [
-        Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-                color: done
-                    ? ProtoColors.green
-                    : (active ? ProtoColors.blue : ProtoColors.surface2),
-                shape: BoxShape.circle),
-            child: Icon(done ? Icons.check : Icons.more_horiz,
-                color: Colors.white, size: 13)),
-        const SizedBox(width: 10),
-        Text(label,
-            style: TextStyle(
-                color: active || done
-                    ? ProtoColors.text
-                    : ProtoColors.muted2,
-                fontSize: 13,
-                fontWeight: FontWeight.w700))
-      ]));
-}
 
 class _TextField extends StatelessWidget {
   final TextEditingController controller;
@@ -2710,28 +2605,6 @@ class _ReviewLine extends StatelessWidget {
       ]));
 }
 
-class _ReviewRow extends StatelessWidget {
-  final String k;
-  final String v;
-  final bool red;
-  const _ReviewRow(this.k, this.v, {this.red = false});
-  @override
-  Widget build(BuildContext context) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(
-            child: Text(k,
-                style: const TextStyle(
-                    color: ProtoColors.muted, fontSize: 12))),
-        Flexible(
-            child: Text(v,
-                textAlign: TextAlign.end,
-                style: TextStyle(
-                    color: red ? ProtoColors.red : ProtoColors.text,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900)))
-      ]));
-}
 
 class _Label extends StatelessWidget {
   final String text;
@@ -2747,40 +2620,6 @@ class _Label extends StatelessWidget {
               fontWeight: FontWeight.w900)));
 }
 
-class _TypeBox extends StatelessWidget {
-  final String title, sub;
-  final bool selected;
-  final Color color;
-  const _TypeBox(
-      {required this.title,
-      required this.sub,
-      required this.selected,
-      required this.color});
-  @override
-  Widget build(BuildContext context) => ProtoCard(
-      color: selected
-          ? color.withValues(alpha: .10)
-          : ProtoColors.surface,
-      border: Border.all(
-          color: selected ? color : ProtoColors.border),
-      child: SizedBox(
-          height: 52,
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-            Text(title,
-                style: TextStyle(
-                    color: selected ? color : ProtoColors.text,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900)),
-            const SizedBox(height: 4),
-            Text(sub,
-                style: const TextStyle(
-                    color: ProtoColors.muted,
-                    fontSize: 9,
-                    height: 1.25))
-          ])));
-}
 
 class _LocationDropdown extends StatelessWidget {
   final List<Localizacao> items;
