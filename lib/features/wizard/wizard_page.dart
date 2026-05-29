@@ -143,7 +143,18 @@ class _WizardPageState extends ConsumerState<WizardPage> {
                       }),
                     ),
                   if ((isNc && step == 4) || (!isNc && step == 2))
-                    _ReviewStep(isNc: isNc),
+                    _ReviewStep(
+                      isNc: isNc,
+                      titulo: _tituloCtrl.text.trim(),
+                      severity: severity,
+                      probability: probability,
+                      responsavelNome: _responsavel?.nome,
+                      responsavelTrativaNome: _responsavelTratativa?.nome,
+                      reincidencia: _reincidencia,
+                      regraDeOuro: _regraDeOuro,
+                      normaCount: _selectedNormaIds.length,
+                      photosCount: ref.watch(captureProvider).length,
+                    ),
                 ],
               ),
             ),
@@ -2105,80 +2116,102 @@ class _ModeTab extends StatelessWidget {
 // Step 4 (NC) / Step 2 (Desvio): Review
 // ---------------------------------------------------------------------------
 
-class _ReviewStep extends StatelessWidget {
+class _ReviewStep extends ConsumerWidget {
   final bool isNc;
+  final String titulo;
+  final int severity;
+  final int probability;
+  final String? responsavelNome;
+  final String? responsavelTrativaNome;
+  final bool reincidencia;
+  final bool regraDeOuro;
+  final int normaCount;
+  final int photosCount;
 
-  const _ReviewStep({required this.isNc});
+  const _ReviewStep({
+    required this.isNc,
+    required this.titulo,
+    required this.severity,
+    required this.probability,
+    this.responsavelNome,
+    this.responsavelTrativaNome,
+    required this.reincidencia,
+    required this.regraDeOuro,
+    required this.normaCount,
+    required this.photosCount,
+  });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final workspace = ref.watch(workspaceProvider);
+    final score = severity * probability;
+    final nivelRisco = score >= 15 ? 'CRITICO' : score >= 9 ? 'ALTO' : score >= 4 ? 'MEDIO' : 'BAIXO';
+    final nivelRed = score >= 15;
+
     return Column(
       children: [
-        const ProtoCard(
-          color: Color(0xFF1A2534),
-          border: Border.fromBorderSide(BorderSide(color: ProtoColors.blue)),
-          child: Row(
-            children: [
-              Icon(Icons.check_circle_outline_rounded,
-                  color: ProtoColors.blue, size: 36),
-              SizedBox(width: 12),
-              Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                Text('Tudo pronto para publicar',
-                    style: TextStyle(
-                        color: ProtoColors.text,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900)),
-                SizedBox(height: 4),
-                Text(
-                    'Revise os dados abaixo. Voce podera editar campos nao-criticos depois da publicacao.',
-                    style: TextStyle(
-                        color: ProtoColors.muted,
-                        fontSize: 12,
-                        height: 1.3))
-              ])),
-            ],
-          ),
+        ProtoCard(
+          color: const Color(0xFF1A2534),
+          border: const Border.fromBorderSide(BorderSide(color: ProtoColors.blue)),
+          child: Row(children: [
+            const Icon(Icons.check_circle_outline_rounded,
+                color: ProtoColors.blue, size: 32),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Tudo pronto para publicar',
+                      style: TextStyle(
+                          color: ProtoColors.text,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 4),
+                  Text('Revise os dados abaixo antes de confirmar.',
+                      style: TextStyle(
+                          color: ProtoColors.muted.withValues(alpha: .8),
+                          fontSize: 12)),
+                ],
+              ),
+            ),
+          ]),
         ),
         const SizedBox(height: 12),
         ProtoCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(isNc ? 'NC' : 'DESVIO',
-                  style: const TextStyle(
-                      color: ProtoColors.text,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900)),
-              const SizedBox(height: 16),
+              ProtoPill(
+                label: isNc ? 'Nao Conformidade' : 'Desvio',
+                bg: isNc
+                    ? ProtoColors.red.withValues(alpha: .12)
+                    : const Color(0xFF4A390A),
+                fg: isNc ? ProtoColors.red : ProtoColors.yellow,
+              ),
+              const SizedBox(height: 10),
               Text(
-                  isNc
-                      ? 'Trabalho em altura sem ancoragem dupla na\nfachada do bloco C'
-                      : 'EPI inadequado em soldagem MIG — luva sem\nproteção térmica',
-                  style: const TextStyle(
-                      color: ProtoColors.text,
-                      fontSize: 14,
-                      height: 1.25,
-                      fontWeight: FontWeight.w900)),
-              const SizedBox(height: 16),
-              const _ReviewLine('Estabelecimento', 'Refinaria Paulínia'),
-              const _ReviewLine('Local', 'Bloco C - fachada norte'),
+                titulo.isEmpty ? '(sem titulo)' : titulo,
+                style: const TextStyle(
+                    color: ProtoColors.text,
+                    fontSize: 15,
+                    height: 1.3,
+                    fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 14),
+              if (workspace != null)
+                _ReviewLine('Estabelecimento', workspace.estabelecimento.nome),
               if (isNc) ...[
-                const _ReviewLine('Risco', 'Crítico · 20', red: true),
-                const _ReviewLine('Normas', 'NR-35'),
-                const _ReviewLine('Eng. construtora', 'Felipe Tanaka'),
-                const _ReviewLine('Eng. verificação', 'A definir'),
-                const _ReviewLine('Reincidência', 'Não'),
+                _ReviewLine('Risco', '$nivelRisco · $score', red: nivelRed),
+                _ReviewLine('Resp. NC', responsavelNome ?? '—'),
+                _ReviewLine('Resp. Tratativa', responsavelTrativaNome ?? '—'),
+                _ReviewLine('Reincidencia', reincidencia ? 'Sim' : 'Nao'),
+                _ReviewLine('Normas', '$normaCount selecionada(s)'),
               ] else ...[
-                const _ReviewLine('Orientação realizada', 'Sim'),
-                const _ReviewLine('Resp. desvio', 'A definir'),
-                const _ReviewLine('Resp. tratativa', 'A definir'),
-                const _ReviewLine('Regra de ouro', 'Não'),
+                _ReviewLine('Resp. Desvio', responsavelNome ?? '—'),
+                _ReviewLine('Resp. Tratativa', responsavelTrativaNome ?? '—'),
               ],
-              const _ReviewLine('Evidências', '4 fotos · GPS'),
-              const _ReviewLine('Prazo', '13/05/2026'),
+              _ReviewLine('Regra de Ouro', regraDeOuro ? 'Sim' : 'Nao', red: regraDeOuro),
+              _ReviewLine('Fotos', photosCount == 0 ? 'Sem foto' : '$photosCount foto(s)'),
             ],
           ),
         ),
@@ -2260,28 +2293,79 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
                         borderRadius: BorderRadius.circular(99))),
                 const SizedBox(height: 22),
                 if (stage == 0) ...[
+                  // Header com tipo
+                  Row(children: [
+                    ProtoPill(
+                      label: widget.isNc ? 'Nao Conformidade' : 'Desvio',
+                      bg: widget.isNc
+                          ? ProtoColors.red.withValues(alpha: .15)
+                          : const Color(0xFF4A390A),
+                      fg: widget.isNc ? ProtoColors.red : ProtoColors.yellow,
+                    ),
+                  ]),
+                  const SizedBox(height: 14),
                   const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('REVISAO FINAL',
-                          style: TextStyle(
-                              color: ProtoColors.blue,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900))),
-                  const SizedBox(height: 8),
+                    alignment: Alignment.centerLeft,
+                    child: Text('Confirmar publicacao?',
+                        style: TextStyle(
+                            color: ProtoColors.text,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900)),
+                  ),
+                  const SizedBox(height: 4),
                   const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Confirmar publicacao?',
-                          style: TextStyle(
-                              color: ProtoColors.text,
-                              fontSize: 21,
-                              fontWeight: FontWeight.w900))),
-                  const SizedBox(height: 18),
-                  ProtoCard(
-                    color: ProtoColors.surface2,
+                    alignment: Alignment.centerLeft,
+                    child: Text('Revise os dados antes de publicar.',
+                        style: TextStyle(
+                            color: ProtoColors.muted, fontSize: 12)),
+                  ),
+                  const SizedBox(height: 16),
+                  // Rows de dados reais
+                  Container(
+                    decoration: BoxDecoration(
+                      color: ProtoColors.surface2,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: ProtoColors.border),
+                    ),
                     child: Column(
-                      children: widget.rows
-                          .map((r) => _ReviewRow(r.label, r.value, red: r.red))
-                          .toList(),
+                      children: [
+                        for (int i = 0; i < widget.rows.length; i++) ...[
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(
+                                  width: 110,
+                                  child: Text(widget.rows[i].label,
+                                      style: const TextStyle(
+                                          color: ProtoColors.muted,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700)),
+                                ),
+                                Expanded(
+                                  child: Text(widget.rows[i].value,
+                                      style: TextStyle(
+                                          color: widget.rows[i].red
+                                              ? ProtoColors.red
+                                              : ProtoColors.text,
+                                          fontSize: 13,
+                                          fontWeight: widget.rows[i].red
+                                              ? FontWeight.w800
+                                              : FontWeight.w600)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (i < widget.rows.length - 1)
+                            const Divider(
+                                height: 1,
+                                color: ProtoColors.border,
+                                indent: 14,
+                                endIndent: 14),
+                        ],
+                      ],
                     ),
                   ),
                   if (errorMsg != null) ...[
@@ -2300,19 +2384,18 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
                         Expanded(
                             child: Text(errorMsg!,
                                 style: const TextStyle(
-                                    color: ProtoColors.red,
-                                    fontSize: 12))),
+                                    color: ProtoColors.red, fontSize: 12))),
                       ]),
                     ),
                   ],
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
                   Row(children: [
                     Expanded(
                         child: _FooterButton(
                             label: 'Voltar',
                             onTap: () => Navigator.pop(context),
                             primary: false)),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     Expanded(
                         flex: 2,
                         child: _FooterButton(
@@ -2321,89 +2404,55 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
                             onTap: _send)),
                   ]),
                 ] else if (stage == 1) ...[
-                  const SizedBox(height: 22),
-                  const _SendingEnvelope(),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 32),
+                  const SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 3, color: ProtoColors.blue),
+                  ),
+                  const SizedBox(height: 20),
                   const Text('Publicando...',
                       style: TextStyle(
                           color: ProtoColors.text,
                           fontSize: 16,
                           fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 22),
-                  const _ProgressLine(done: true, label: 'Validando dados'),
-                  const _ProgressLine(
-                      done: true,
-                      label: 'Enviando 4 evidencias (3.4 MB)'),
-                  const _ProgressLine(
-                      done: false,
-                      label: 'Notificando responsaveis via push',
-                      active: true),
-                  const _ProgressLine(
-                      done: false, label: 'Gerando protocolo'),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 8),
+                  const Text('Aguarde um momento.',
+                      style: TextStyle(color: ProtoColors.muted, fontSize: 13)),
+                  const SizedBox(height: 32),
                 ] else ...[
+                  const SizedBox(height: 12),
                   Container(
-                      width: 86,
-                      height: 86,
+                      width: 80,
+                      height: 80,
                       decoration: BoxDecoration(
-                          color: ProtoColors.green.withValues(alpha: .16),
+                          color: ProtoColors.green.withValues(alpha: .14),
                           shape: BoxShape.circle,
                           border: Border.all(
-                              color:
-                                  ProtoColors.green.withValues(alpha: .45),
+                              color: ProtoColors.green.withValues(alpha: .4),
                               width: 2)),
                       child: const Icon(Icons.check_rounded,
-                          color: ProtoColors.green, size: 36)),
-                  const SizedBox(height: 18),
-                  const Text('Publicada com sucesso!',
-                      style: TextStyle(
-                          color: ProtoColors.text,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 14),
-                  Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                          color: ProtoColors.surface2,
-                          borderRadius: BorderRadius.circular(8)),
-                      child: Text(
-                          widget.isNc ? 'NC-2026-0289' : 'DS-2026-0934',
-                          style: const TextStyle(
-                              color: ProtoColors.text,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1))),
-                  const SizedBox(height: 18),
+                          color: ProtoColors.green, size: 34)),
+                  const SizedBox(height: 16),
                   Text(
-                      widget.isNc
-                          ? 'Felipe Tanaka e Marcos Silva foram\nnotificados via push.'
-                          : 'Felipe Tanaka e Marcos Silva foram\nnotificados via push. Voce pode\nacompanhar o andamento em\n"Ocorrencias".',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          color: ProtoColors.muted,
-                          fontSize: 13,
-                          height: 1.4)),
-                  const SizedBox(height: 18),
-                  if (widget.isNc)
-                    _FooterButton(
-                        label: 'OK', onTap: () => context.go('/feed'))
-                  else
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _FooterButton(
-                                label: 'Ver detalhes',
-                                onTap: () =>
-                                    context.go('/oc/DS-2026-0931'),
-                                primary: false)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                            child: _FooterButton(
-                                label: 'Concluir',
-                                onTap: () => context.go('/feed'))),
-                      ],
-                    ),
+                    widget.isNc
+                        ? 'NC publicada com sucesso!'
+                        : 'Desvio publicado com sucesso!',
+                    style: const TextStyle(
+                        color: ProtoColors.text,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Os responsaveis foram notificados.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: ProtoColors.muted, fontSize: 13, height: 1.4),
+                  ),
+                  const SizedBox(height: 24),
+                  _FooterButton(label: 'OK', onTap: () => context.go('/feed')),
                 ],
               ],
             ),
