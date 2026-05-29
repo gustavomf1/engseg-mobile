@@ -185,6 +185,7 @@ class _BodyState extends ConsumerState<_Body> {
   bool _busy = false;
 
   DesvioDetail get d => widget.d;
+  String? get _token => ref.read(authProvider).valueOrNull?.token;
 
   Future<void> _run(Future<void> Function() action) async {
     setState(() => _busy = true);
@@ -547,8 +548,8 @@ class _BodyState extends ConsumerState<_Body> {
                       child: url != null
                           ? Image(
                               image: NetworkImage(url,
-                                  headers: token != null
-                                      ? {'Authorization': 'Bearer $token'}
+                                  headers: _token != null
+                                      ? {'Authorization': 'Bearer $_token'}
                                       : {}),
                               width: 64, height: 64, fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => _thumbFallback())
