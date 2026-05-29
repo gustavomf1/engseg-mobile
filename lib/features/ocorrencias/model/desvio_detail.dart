@@ -16,6 +16,7 @@ class DesvioDetail {
   final String? responsavelTratativaId;
   final String? responsavelTratativaNome;
   final String? usuarioCriacaoNome;
+  final String? usuarioCriacaoEmail;
   final List<TrativaDesvio> tratativas;
   final List<Map<String, dynamic>> historico;
 
@@ -35,6 +36,7 @@ class DesvioDetail {
     this.responsavelTratativaId,
     this.responsavelTratativaNome,
     this.usuarioCriacaoNome,
+    this.usuarioCriacaoEmail,
     this.tratativas = const [],
     this.historico = const [],
   });
@@ -56,6 +58,7 @@ class DesvioDetail {
         // chave backend tem typo "Triva" (não "Tativa")
         responsavelTratativaNome: j['responsavelTrivaNome'] as String?,
         usuarioCriacaoNome: j['usuarioCriacaoNome'] as String?,
+        usuarioCriacaoEmail: j['usuarioCriacaoEmail'] as String?,
         tratativas: (j['tratativas'] as List<dynamic>? ?? [])
             .map((e) => TrativaDesvio.fromJson(e as Map<String, dynamic>))
             .toList(),

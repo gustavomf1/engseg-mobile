@@ -1,9 +1,12 @@
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../shared/data/mock_data.dart';
 import '../../shared/widgets/prototype_ui.dart';
@@ -21,6 +24,110 @@ String _formatDate(String iso) {
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
   } catch (_) {
     return iso;
+  }
+}
+
+Future<void> _downloadImage(BuildContext context, String url) async {
+  try {
+    final dio = Dio();
+    final response = await dio.get<Uint8List>(url,
+        options: Options(responseType: ResponseType.bytes));
+    final dir = await getApplicationDocumentsDirectory();
+    final name =
+        'desvio_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final file = File('${dir.path}/$name');
+    await file.writeAsBytes(response.data!);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Salvo em: ${file.path}'),
+          backgroundColor: const Color(0xFF0B3A1C),
+        ),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao baixar: $e'),
+            backgroundColor: const Color(0xFF4A1017)),
+      );
+    }
+  }
+}
+
+void _openImageViewer(BuildContext context, List<String> urls, int index) {
+  showDialog<void>(
+    context: context,
+    barrierColor: Colors.black87,
+    builder: (_) => _ImageViewer(urls: urls, initialIndex: index),
+  );
+}
+
+class _ImageViewer extends StatefulWidget {
+  final List<String> urls;
+  final int initialIndex;
+  const _ImageViewer({required this.urls, required this.initialIndex});
+  @override
+  State<_ImageViewer> createState() => _ImageViewerState();
+}
+
+class _ImageViewerState extends State<_ImageViewer> {
+  late int _current;
+  late final PageController _pc;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.initialIndex;
+    _pc = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pc.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text('${_current + 1} / ${widget.urls.length}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download_rounded, color: Colors.white),
+            tooltip: 'Baixar',
+            onPressed: () => _downloadImage(context, widget.urls[_current]),
+          ),
+        ],
+      ),
+      body: PageView.builder(
+        controller: _pc,
+        itemCount: widget.urls.length,
+        onPageChanged: (i) => setState(() => _current = i),
+        itemBuilder: (_, i) => InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 5.0,
+          child: Center(
+            child: Image.network(
+              widget.urls[i],
+              fit: BoxFit.contain,
+              loadingBuilder: (_, child, progress) => progress == null
+                  ? child
+                  : const Center(
+                      child: CircularProgressIndicator(color: Colors.white)),
+              errorBuilder: (_, __, ___) => const Icon(
+                  Icons.broken_image_outlined,
+                  color: Colors.white54,
+                  size: 64),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -89,6 +196,8 @@ class _BodyState extends ConsumerState<_Body> {
         session != null && session.id == d.responsavelTratativaId;
     final isResponsavelDesvio =
         session != null && session.id == d.responsavelDesvioId;
+    final isCriador = session != null &&
+        (session.isAdmin || session.email == d.usuarioCriacaoEmail);
     final isApprover = session != null &&
         (session.isAdmin || session.perfil == 'ENGENHEIRO' || isResponsavelDesvio);
     final canTratar =
@@ -168,19 +277,38 @@ class _BodyState extends ConsumerState<_Body> {
               scrollDirection: Axis.horizontal,
               itemCount: fotos.length,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (_, i) => ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  fotos[i],
-                  width: 260,
-                  height: 190,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 260,
-                    height: 190,
-                    color: ProtoColors.surface2,
-                    child: const Icon(Icons.broken_image_outlined,
-                        color: ProtoColors.muted, size: 40),
+              itemBuilder: (_, i) => GestureDetector(
+                onTap: () => _openImageViewer(context, fotos, i),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Stack(
+                    children: [
+                      Image.network(
+                        fotos[i],
+                        width: 260,
+                        height: 190,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 260,
+                          height: 190,
+                          color: ProtoColors.surface2,
+                          child: const Icon(Icons.broken_image_outlined,
+                              color: ProtoColors.muted, size: 40),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 8, right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(Icons.zoom_in_rounded,
+                              color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -242,7 +370,7 @@ class _BodyState extends ConsumerState<_Body> {
               const SizedBox(height: 20),
 
               // ── Ações ──────────────────────────────────────────
-              if (!_busy) ..._actions(canTratar: canTratar, isApprover: isApprover),
+              if (!_busy) ..._actions(canTratar: canTratar, isApprover: isApprover, isCriador: isCriador),
               if (_busy) const Center(child: CircularProgressIndicator()),
 
               const SizedBox(height: 40),
@@ -420,12 +548,16 @@ class _BodyState extends ConsumerState<_Body> {
         child: const Icon(Icons.image_outlined, color: ProtoColors.muted),
       );
 
-  List<Widget> _actions({required bool canTratar, required bool isApprover}) {
+  List<Widget> _actions({
+    required bool canTratar,
+    required bool isApprover,
+    required bool isCriador,
+  }) {
     switch (d.status) {
       case 'ABERTO':
-        if (!canTratar) return [];
+        if (!isCriador) return [];
         return [
-          _btn('Abrir tratativa', Icons.play_arrow_rounded, ProtoColors.blue,
+          _btn('Enviar para Tratativa', Icons.send_rounded, ProtoColors.blue,
               () => _run(() => ref.read(desvioRepositoryProvider).abrirTratativa(d.id))),
         ];
       case 'AGUARDANDO_TRATATIVA':
