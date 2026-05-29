@@ -431,6 +431,7 @@ class _DescriptionStep extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final workspaceId = ref.watch(workspaceProvider)?.estabelecimento.id;
+    final empresaFilhaId = ref.watch(workspaceProvider)?.empresaFilha.id;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -475,15 +476,17 @@ class _DescriptionStep extends ConsumerWidget {
           if (workspaceId != null)
             _UserPickerRow(
               workspaceId: workspaceId,
+              empresaId: empresaFilhaId,
+              filterPerfis: const ['EXTERNO', 'ENGENHEIRO'],
               selected: responsavelTratativa,
               icon: Icons.manage_accounts_outlined,
-              hint: 'Selecionar engenheiro',
+              hint: 'Selecionar responsável',
               onSelected: onResponsavelTratativa,
             )
           else
             const _SelectRow(
                 icon: Icons.manage_accounts_outlined,
-                text: 'Selecionar engenheiro'),
+                text: 'Selecionar responsável'),
           const SizedBox(height: 14),
           const Text('Eng. Responsável pela NC',
               style: TextStyle(
@@ -497,6 +500,7 @@ class _DescriptionStep extends ConsumerWidget {
           if (workspaceId != null)
             _UserPickerRow(
               workspaceId: workspaceId,
+              filterPerfis: const ['ENGENHEIRO', 'TECNICO'],
               selected: responsavel,
               icon: Icons.engineering_outlined,
               hint: 'Selecionar engenheiro',
@@ -637,6 +641,7 @@ class _DescriptionStep extends ConsumerWidget {
           if (workspaceId != null)
             _UserPickerRow(
               workspaceId: workspaceId,
+              filterPerfis: const ['ENGENHEIRO', 'TECNICO'],
               selected: responsavel,
               icon: Icons.person_outline_rounded,
               hint: 'Selecionar responsável',
@@ -656,6 +661,7 @@ class _DescriptionStep extends ConsumerWidget {
           if (workspaceId != null)
             _UserPickerRow(
               workspaceId: workspaceId,
+              filterPerfis: const ['ENGENHEIRO', 'TECNICO', 'EXTERNO'],
               selected: responsavelTratativa,
               icon: Icons.person_add_alt_outlined,
               hint: 'Selecionar responsável',
@@ -691,6 +697,10 @@ class _UserPickerRow extends ConsumerWidget {
   final IconData icon;
   final String hint;
   final ValueChanged<UsuarioSummary?> onSelected;
+  // Se fornecido, busca por empresaId em vez de workspaceId
+  final String? empresaId;
+  // Se fornecido, filtra por perfil
+  final List<String>? filterPerfis;
 
   const _UserPickerRow({
     required this.workspaceId,
@@ -698,11 +708,15 @@ class _UserPickerRow extends ConsumerWidget {
     required this.icon,
     required this.hint,
     required this.onSelected,
+    this.empresaId,
+    this.filterPerfis,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final usuariosAsync = ref.watch(usuariosProvider(workspaceId));
+    final usuariosAsync = empresaId != null
+        ? ref.watch(usuariosPorEmpresaProvider(empresaId!))
+        : ref.watch(usuariosProvider(workspaceId));
     return usuariosAsync.when(
       loading: () => const SizedBox(
           height: 46,
@@ -713,7 +727,11 @@ class _UserPickerRow extends ConsumerWidget {
                   child: CircularProgressIndicator(strokeWidth: 2)))),
       error: (_, __) => const _SelectRow(
           icon: Icons.error_outline, text: 'Erro ao carregar usuários'),
-      data: (usuarios) => GestureDetector(
+      data: (todos) {
+        final usuarios = filterPerfis != null
+            ? todos.where((u) => filterPerfis!.contains(u.perfil)).toList()
+            : todos;
+        return GestureDetector(
         onTap: () => _showPicker(context, usuarios),
         child: Container(
           height: 46,
@@ -739,7 +757,8 @@ class _UserPickerRow extends ConsumerWidget {
                 color: ProtoColors.muted, size: 18),
           ]),
         ),
-      ),
+        );
+      },
     );
   }
 
