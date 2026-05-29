@@ -10,6 +10,8 @@ import '../../features/dashboard/dashboard_page.dart';
 import '../../features/drafts/drafts_page.dart';
 import '../../features/notifications/notif_page.dart';
 import '../../features/ocorrencias/detail_page.dart';
+import '../../features/ocorrencias/desvio_detail_page.dart';
+import '../../features/ocorrencias/desvio_feed_page.dart';
 import '../../features/ocorrencias/feed_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/wizard/wizard_page.dart';
@@ -17,12 +19,11 @@ import '../../shared/widgets/engseg_shell.dart';
 import 'navigator_key.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
-
-  return GoRouter(
+  final router = GoRouter(
     navigatorKey: navigatorKey,
     initialLocation: '/',
     redirect: (context, state) {
+      final authState = ref.read(authProvider);
       final isLoggedIn = authState.valueOrNull != null;
       final isLoggingIn = state.matchedLocation == '/login';
       final isSplash = state.matchedLocation == '/';
@@ -48,12 +49,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __, child) => EngSegShell(child: child),
         routes: [
           GoRoute(path: '/feed', builder: (_, __) => const FeedPage()),
+          GoRoute(path: '/desvios', builder: (_, __) => const DesvioFeedPage()),
           GoRoute(path: '/notif', builder: (_, __) => const NotifPage()),
           GoRoute(path: '/dashboard', builder: (_, __) => const DashboardPage()),
           GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
         ],
       ),
       GoRoute(path: '/oc/:id', builder: (_, state) => DetailPage(id: state.pathParameters['id']!)),
+      GoRoute(path: '/desvio/:id', builder: (_, state) => DesvioDetailPage(id: state.pathParameters['id']!)),
       GoRoute(path: '/drafts', builder: (_, __) => const DraftsPage()),
       GoRoute(
         path: '/camera',
@@ -68,4 +71,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  ref.listen(authProvider, (_, __) => router.refresh());
+
+  return router;
 });
