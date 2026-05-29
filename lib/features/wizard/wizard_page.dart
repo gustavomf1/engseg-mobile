@@ -2221,6 +2221,65 @@ class _ReviewStep extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------------------
+// Animated pulsing loader
+// ---------------------------------------------------------------------------
+
+class _PulsingLoader extends StatefulWidget {
+  @override
+  State<_PulsingLoader> createState() => _PulsingLoaderState();
+}
+
+class _PulsingLoaderState extends State<_PulsingLoader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1000))
+      ..repeat(reverse: true);
+    _scale = Tween(begin: 0.85, end: 1.0).animate(
+        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _opacity = Tween(begin: 0.4, end: 1.0).animate(
+        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => Opacity(
+        opacity: _opacity.value,
+        child: Transform.scale(
+          scale: _scale.value,
+          child: Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: ProtoColors.blue.withValues(alpha: .15),
+              border: Border.all(
+                  color: ProtoColors.blue.withValues(alpha: .6), width: 2),
+            ),
+            child: const Icon(Icons.send_rounded,
+                color: ProtoColors.blue, size: 28),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // ConfirmPublishModal — receives onPublish callback
 // ---------------------------------------------------------------------------
 
@@ -2255,7 +2314,7 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
     try {
       await widget.onPublish();
       if (mounted) setState(() => stage = 2);
-    } on Exception catch (e) {
+    } catch (e) {
       if (mounted) {
         setState(() {
           stage = 0;
@@ -2409,22 +2468,21 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
                             onTap: _send)),
                   ]),
                 ] else if (stage == 1) ...[
-                  const SizedBox(height: 32),
-                  const SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 3, color: ProtoColors.blue),
+                  const SizedBox(height: 28),
+                  _PulsingLoader(),
+                  const SizedBox(height: 22),
+                  Text(
+                    widget.isNc ? 'Publicando NC...' : 'Publicando Desvio...',
+                    style: const TextStyle(
+                        color: ProtoColors.text,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900),
                   ),
-                  const SizedBox(height: 20),
-                  const Text('Publicando...',
-                      style: TextStyle(
-                          color: ProtoColors.text,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900)),
                   const SizedBox(height: 8),
-                  const Text('Aguarde um momento.',
-                      style: TextStyle(color: ProtoColors.muted, fontSize: 13)),
+                  const Text(
+                    'Salvando dados e enviando fotos.',
+                    style: TextStyle(color: ProtoColors.muted, fontSize: 13),
+                  ),
                   const SizedBox(height: 32),
                 ] else ...[
                   const SizedBox(height: 12),
