@@ -21,10 +21,12 @@ class EvidenciaRepositoryImpl implements EvidenciaRepository {
   Future<EvidenciaResponse> uploadParaNc(
     String ncId,
     File foto,
-    EvidenciaMetadata meta,
-  ) async {
+    EvidenciaMetadata meta, {
+    String tipo = 'OCORRENCIA',
+  }) async {
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(foto.path),
+      'tipo': tipo,
       'latitude': meta.latitude.toString(),
       'longitude': meta.longitude.toString(),
       'capturedAt': meta.capturedAt.toString(),
@@ -46,10 +48,12 @@ class EvidenciaRepositoryImpl implements EvidenciaRepository {
   Future<EvidenciaResponse> uploadParaDesvio(
     String desvioId,
     File foto,
-    EvidenciaMetadata meta,
-  ) async {
+    EvidenciaMetadata meta, {
+    String tipo = 'OCORRENCIA',
+  }) async {
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(foto.path),
+      'tipo': tipo,
       'latitude': meta.latitude.toString(),
       'longitude': meta.longitude.toString(),
       'capturedAt': meta.capturedAt.toString(),

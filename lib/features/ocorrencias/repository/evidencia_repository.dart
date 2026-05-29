@@ -7,11 +7,13 @@ abstract class EvidenciaRepository {
   Future<EvidenciaResponse> uploadParaNc(
     String ncId,
     File foto,
-    EvidenciaMetadata meta,
-  );
+    EvidenciaMetadata meta, {
+    String tipo = 'OCORRENCIA',
+  });
   Future<EvidenciaResponse> uploadParaDesvio(
     String desvioId,
     File foto,
-    EvidenciaMetadata meta,
-  );
+    EvidenciaMetadata meta, {
+    String tipo = 'OCORRENCIA',
+  });
 }

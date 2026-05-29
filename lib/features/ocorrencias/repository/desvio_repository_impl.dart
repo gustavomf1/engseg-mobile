@@ -1,9 +1,16 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../model/desvio_summary.dart';
+import '../model/desvio_detail.dart';
 import '../model/criar_desvio_request.dart';
+import '../model/desvio_action_requests.dart';
 import 'desvio_repository.dart';
 import '../../../core/network/dio_client.dart';
+
+final desvioRepositoryProvider = Provider<DesvioRepository>((ref) {
+  return DesvioRepositoryImpl(dio: ref.watch(dioProvider));
+});
 
 final desvioListProvider = FutureProvider.family<List<DesvioSummary>, String>(
   (ref, estabelecimentoId) async {
@@ -13,13 +20,14 @@ final desvioListProvider = FutureProvider.family<List<DesvioSummary>, String>(
   },
 );
 
-final desvioRepositoryProvider = Provider<DesvioRepository>((ref) {
-  return DesvioRepositoryImpl(dio: ref.watch(dioProvider));
-});
+final desvioDetailProvider = FutureProvider.family<DesvioDetail, String>(
+  (ref, id) async {
+    return ref.watch(desvioRepositoryProvider).buscarDetalhe(id);
+  },
+);
 
 class DesvioRepositoryImpl implements DesvioRepository {
   final Dio dio;
-
   DesvioRepositoryImpl({required this.dio});
 
   @override
@@ -36,9 +44,9 @@ class DesvioRepositoryImpl implements DesvioRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> buscarPorId(String id) async {
+  Future<DesvioDetail> buscarDetalhe(String id) async {
     final response = await dio.get<Map<String, dynamic>>('/api/desvios/$id');
-    return response.data!;
+    return DesvioDetail.fromJson(response.data!);
   }
 
   @override
@@ -48,5 +56,35 @@ class DesvioRepositoryImpl implements DesvioRepository {
       data: request.toJson(),
     );
     return response.data!;
+  }
+
+  @override
+  Future<void> abrirTratativa(String id) async {
+    await dio.post<dynamic>('/api/desvios/$id/abrir-tratativa');
+  }
+
+  @override
+  Future<void> adicionarTratativa(String id, AdicionarTrativaRequest request) async {
+    await dio.post<dynamic>('/api/desvios/$id/tratativas', data: request.toJson());
+  }
+
+  @override
+  Future<void> removerTratativa(String id, String trativaId) async {
+    await dio.delete<dynamic>('/api/desvios/$id/tratativas/$trativaId');
+  }
+
+  @override
+  Future<void> submeterTratativa(String id, SubmeterTrativaDesvioRequest request) async {
+    await dio.post<dynamic>('/api/desvios/$id/submeter-tratativa', data: request.toJson());
+  }
+
+  @override
+  Future<void> aprovar(String id, AprovarDesvioRequest request) async {
+    await dio.post<dynamic>('/api/desvios/$id/aprovar', data: request.toJson());
+  }
+
+  @override
+  Future<void> reprovar(String id, ReprovarTrativasDesvioRequest request) async {
+    await dio.post<dynamic>('/api/desvios/$id/reprovar', data: request.toJson());
   }
 }
