@@ -126,7 +126,7 @@ class _BodyState extends ConsumerState<_Body> {
           const SizedBox(height: 16),
         ],
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, fotos.isEmpty ? 12 : 0, 16, 0),
+          padding: EdgeInsets.fromLTRB(16, fotos.isEmpty ? 12 : 0, 16, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
