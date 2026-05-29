@@ -15,6 +15,34 @@ import 'model/trativa_desvio.dart';
 import 'repository/desvio_repository_impl.dart';
 import 'repository/evidencia_repository_impl.dart';
 
+Widget _photoStrip(List<String> urls) {
+  if (urls.isEmpty) return const SizedBox.shrink();
+  return SizedBox(
+    height: 180,
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
+      itemCount: urls.length,
+      separatorBuilder: (_, __) => const SizedBox(width: 8),
+      itemBuilder: (_, i) => ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          urls[i],
+          width: 240,
+          height: 180,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            width: 240,
+            height: 180,
+            color: ProtoColors.surface2,
+            child: const Icon(Icons.broken_image_outlined,
+                color: ProtoColors.muted, size: 36),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class DesvioDetailPage extends ConsumerWidget {
   final String id;
   const DesvioDetailPage({super.key, required this.id});
@@ -84,46 +112,80 @@ class _BodyState extends ConsumerState<_Body> {
     final canTratar =
         session != null && (session.isAdmin || isResponsavelTratativa);
 
+    final fotos = ref.watch(desvioEvidenciasProvider(d.id)).valueOrNull ?? [];
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 40),
       children: [
-        _header(),
-        const SizedBox(height: 16),
-        _geral(),
-        const SizedBox(height: 16),
-        _tratativasSection(),
-        const SizedBox(height: 20),
-        if (!_busy) ..._actions(canTratar: canTratar, isApprover: isApprover),
-        if (_busy) const Center(child: CircularProgressIndicator()),
+        // Fotos de ocorrência
+        if (fotos.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 0, 0),
+            child: _photoStrip(fotos),
+          ),
+          const SizedBox(height: 16),
+        ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, fotos.isEmpty ? 12 : 0, 16, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _headerCard(),
+              const SizedBox(height: 12),
+              _infoCard(),
+              const SizedBox(height: 16),
+              _tratativasSection(),
+              const SizedBox(height: 20),
+              if (!_busy) ..._actions(canTratar: canTratar, isApprover: isApprover),
+              if (_busy) const Center(child: CircularProgressIndicator()),
+            ],
+          ),
+        ),
       ],
     );
   }
 
-  Widget _header() {
-    return Row(children: [
-      const ProtoPill(
-          label: 'Desvio', bg: Color(0xFF4A390A), fg: ProtoColors.yellow),
-      const SizedBox(width: 8),
-      ProtoPill(
-        label: statusLabel[d.status] ?? d.status,
-        bg: ProtoColors.surface2,
-        fg: ProtoColors.blue,
-      ),
-    ]);
-  }
-
-  Widget _geral() {
+  Widget _headerCard() {
     return ProtoCard(
+      color: const Color(0xFF1A1408),
+      border: const Border.fromBorderSide(
+          BorderSide(color: Color(0xFF4A390A))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(children: [
+            const ProtoPill(
+                label: 'Desvio', bg: Color(0xFF4A390A), fg: ProtoColors.yellow),
+            const SizedBox(width: 8),
+            ProtoPill(
+              label: statusLabel[d.status] ?? d.status,
+              bg: ProtoColors.surface2,
+              fg: ProtoColors.blue,
+            ),
+          ]),
+          const SizedBox(height: 10),
           Text(d.titulo,
               style: const TextStyle(
                   color: ProtoColors.text,
                   fontSize: 17,
-                  fontWeight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          if (d.descricao != null) _line('Descricao', d.descricao!),
+                  fontWeight: FontWeight.w900,
+                  height: 1.3)),
+          if (d.dataRegistro.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(d.dataRegistro,
+                style: const TextStyle(
+                    color: ProtoColors.muted, fontSize: 11)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _infoCard() {
+    return ProtoCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           if (d.orientacaoRealizada != null)
             _line('Orientacao', d.orientacaoRealizada!),
           if (d.localizacaoNome != null) _line('Local', d.localizacaoNome!),

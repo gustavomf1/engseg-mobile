@@ -26,6 +26,25 @@ final desvioDetailProvider = FutureProvider.family<DesvioDetail, String>(
   },
 );
 
+/// Fotos de ocorrência do Desvio (não vêm no DesvioResponse)
+final desvioEvidenciasProvider = FutureProvider.family<List<String>, String>(
+  (ref, id) async {
+    final dio = ref.watch(dioProvider);
+    try {
+      final r = await dio.get<List<dynamic>>(
+        '/api/evidencias/desvio/$id',
+        queryParameters: {'tipo': 'OCORRENCIA'},
+      );
+      return (r.data ?? [])
+          .map((e) => (e as Map<String, dynamic>)['url'] as String? ?? '')
+          .where((url) => url.isNotEmpty)
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  },
+);
+
 class DesvioRepositoryImpl implements DesvioRepository {
   final Dio dio;
   DesvioRepositoryImpl({required this.dio});
