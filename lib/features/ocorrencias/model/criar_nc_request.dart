@@ -13,6 +13,7 @@ class CriarNcRequest {
   final List<String> normaIds;
   final List<String> emailsManuais;
   final List<String> emailsPadraoExcluidos;
+  final String? empresaContratadaId;
 
   const CriarNcRequest({
     required this.estabelecimentoId,
@@ -29,6 +30,7 @@ class CriarNcRequest {
     this.normaIds = const [],
     this.emailsManuais = const [],
     this.emailsPadraoExcluidos = const [],
+    this.empresaContratadaId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -46,5 +48,6 @@ class CriarNcRequest {
         'normaIds': normaIds,
         'emailsManuais': emailsManuais,
         'emailsPadraoExcluidos': emailsPadraoExcluidos,
+        if (empresaContratadaId != null) 'empresaContratadaId': empresaContratadaId,
       };
 }

@@ -224,10 +224,12 @@ class _WizardPageState extends ConsumerState<WizardPage> {
   }
 
   Future<void> _publicar() async {
-    final workspaceId = ref.read(workspaceProvider)?.estabelecimento.id;
+    final workspace = ref.read(workspaceProvider);
+    final workspaceId = workspace?.estabelecimento.id;
     if (workspaceId == null) {
       throw Exception('Nenhum estabelecimento selecionado');
     }
+    final empresaFilhaId = workspace?.empresaFilha.id;
 
     final titulo = _tituloCtrl.text.trim();
     final descricao =
@@ -247,6 +249,7 @@ class _WizardPageState extends ConsumerState<WizardPage> {
         responsavelNcId: _responsavel?.id,
         responsavelTrativaId: _responsavelTratativa?.id,
         ncAnteriorId: _ncAnterior?.id,
+        empresaContratadaId: empresaFilhaId,
       );
       final nc = await ref.read(ncRepositoryProvider).criar(request);
       await _uploadPhotos(nc.id, isNc: true);
