@@ -21,13 +21,19 @@ class _SplashPageState extends ConsumerState<SplashPage> {
 
   Future<void> _checkSession() async {
     if (!mounted) return;
-    final session = await ref.read(authProvider.future);
+    debugPrint('[Splash] aguardando authProvider...');
+    final session = await ref.read(authProvider.future).timeout(
+      const Duration(seconds: 5),
+      onTimeout: () => null,
+    );
+    debugPrint('[Splash] session: $session');
     if (!mounted) return;
     if (session == null) {
       context.go('/login');
     } else {
       final workspace = ref.read(workspaceProvider);
-      context.go(workspace == null ? '/workspace' : '/feed');
+      final isExterno = session.perfil == 'EXTERNO';
+      context.go((isExterno || workspace != null) ? '/feed' : '/workspace');
     }
   }
 
@@ -39,7 +45,6 @@ class _SplashPageState extends ConsumerState<SplashPage> {
         bottom: false,
         child: Column(
           children: [
-            const Padding(padding: EdgeInsets.fromLTRB(16, 6, 16, 0), child: ProtoStatusBar()),
             Expanded(
               child: Center(
                 child: TweenAnimationBuilder<double>(

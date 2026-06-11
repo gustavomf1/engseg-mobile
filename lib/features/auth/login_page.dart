@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../shared/widgets/prototype_ui.dart';
 import 'provider/auth_provider.dart';
@@ -17,6 +16,7 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
   final password = TextEditingController(text: '••••••••••');
   bool loading = false;
   bool remember = true;
+  String? _errorMsg;
 
   late final AnimationController _spinController;
 
@@ -38,7 +38,7 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
   }
 
   Future<void> _submit() async {
-    setState(() => loading = true);
+    setState(() { loading = true; _errorMsg = null; });
     _spinController.repeat();
     try {
       await ref.read(authProvider.notifier).login(
@@ -46,18 +46,18 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
         password.text,
       );
       if (!mounted) return;
-      final session = ref.read(authProvider).value;
-      if (session != null) {
-        context.go('/workspace');
+      final authState = ref.read(authProvider);
+      if (authState.hasError) {
+        setState(() => _errorMsg = 'Erro ao conectar. Verifique suas credenciais.');
       }
-    } on Exception catch (e) {
+    } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      setState(() => _errorMsg = 'Erro ao conectar. Verifique sua conexão.');
     } finally {
-      _spinController.stop();
-      if (mounted) setState(() => loading = false);
+      if (mounted) {
+        _spinController.stop();
+        setState(() => loading = false);
+      }
     }
   }
 
@@ -82,8 +82,6 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const ProtoStatusBar(),
-                  const SizedBox(height: 18),
                   TweenAnimationBuilder<double>(
                     tween: Tween(begin: .86, end: 1),
                     duration: const Duration(milliseconds: 650),
@@ -120,6 +118,16 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                         _LoginInput(controller: email, icon: Icons.mail_rounded, hint: 'seu@email.com.br', keyboardType: TextInputType.emailAddress),
                         const SizedBox(height: 10),
                         _LoginInput(controller: password, icon: Icons.lock_rounded, hint: 'Senha', obscure: true, trailing: Icons.visibility_rounded),
+                        if (_errorMsg != null) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Icon(Icons.error_outline_rounded, color: ProtoColors.red, size: 14),
+                              const SizedBox(width: 6),
+                              Text(_errorMsg!, style: const TextStyle(color: ProtoColors.red, fontSize: 12, fontWeight: FontWeight.w700)),
+                            ],
+                          ),
+                        ],
                         const SizedBox(height: 14),
                         Row(
                           children: [

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,12 +12,14 @@ import '../../shared/widgets/prototype_ui.dart';
 import '../auth/provider/auth_provider.dart';
 import '../ocorrencias/model/criar_desvio_request.dart';
 import '../ocorrencias/model/criar_nc_request.dart';
+import '../ocorrencias/model/email_padrao.dart';
 import '../ocorrencias/model/evidencia_metadata.dart';
 import '../ocorrencias/model/localizacao.dart';
 import '../ocorrencias/model/nc_summary.dart';
 import '../ocorrencias/model/norma.dart';
 import '../ocorrencias/model/usuario_summary.dart';
 import '../ocorrencias/repository/desvio_repository_impl.dart';
+import '../ocorrencias/repository/email_padrao_repository.dart';
 import '../ocorrencias/repository/evidencia_repository_impl.dart';
 import '../ocorrencias/repository/nc_repository_impl.dart';
 import '../ocorrencias/repository/support_repository_impl.dart';
@@ -58,10 +61,6 @@ class _WizardPageState extends ConsumerState<WizardPage> {
 
   // NC anterior (reincidência)
   NcSummary? _ncAnterior;
-
-  // Publish state
-  bool _publishing = false;
-  String? _publishError;
 
   int get stepCount => isNc ? 4 : 2;
 
@@ -197,17 +196,42 @@ class _WizardPageState extends ConsumerState<WizardPage> {
             red: severity * probability >= 15),
         _ConfirmRow('Regra de Ouro', _regraDeOuro ? 'Sim' : 'Nao', red: _regraDeOuro),
         _ConfirmRow('Reincidencia', _reincidencia ? 'Sim' : 'Nao'),
-        _ConfirmRow('Prazo tratativa', '30 dias (automatico)'),
+        const _ConfirmRow('Prazo tratativa', '30 dias (automatico)'),
         _ConfirmRow('Normas', '${_selectedNormaIds.length} selecionada(s)'),
         _ConfirmRow('Resp. NC', _responsavel?.nome ?? '—'),
         _ConfirmRow('Resp. Tratativa', _responsavelTratativa?.nome ?? '—'),
       ] else ...[
         _ConfirmRow('Resp. Desvio', _responsavel?.nome ?? '—'),
         _ConfirmRow('Resp. Tratativa', _responsavelTratativa?.nome ?? '—'),
-        _ConfirmRow('Regra de Ouro', _regraDeOuro ? 'Sim' : 'Nao', red: _regraDeOuro),
       ],
       _ConfirmRow('Fotos', photos.isEmpty ? 'Sem foto' : '${photos.length} foto(s)'),
     ];
+
+    // Destinatários dinâmicos (automáticos): você + responsáveis selecionados.
+    final user = ref.read(authProvider).valueOrNull;
+    final recipients = <_Recipient>[];
+    if (user != null && user.email.isNotEmpty) {
+      recipients.add(_Recipient(name: user.nome, email: user.email, tag: 'você'));
+    }
+    if (isNc) {
+      final rt = _responsavelTratativa;
+      if (rt != null && rt.email.isNotEmpty) {
+        recipients.add(_Recipient(name: rt.nome, email: rt.email, tag: 'Resp. Tratativa'));
+      }
+      final rv = _responsavel;
+      if (rv != null && rv.email.isNotEmpty) {
+        recipients.add(_Recipient(name: rv.nome, email: rv.email, tag: 'Resp. NC'));
+      }
+    } else {
+      final rd = _responsavel;
+      if (rd != null && rd.email.isNotEmpty) {
+        recipients.add(_Recipient(name: rd.nome, email: rd.email, tag: 'Resp. Desvio'));
+      }
+      final rt = _responsavelTratativa;
+      if (rt != null && rt.email.isNotEmpty) {
+        recipients.add(_Recipient(name: rt.nome, email: rt.email, tag: 'Resp. Tratativa'));
+      }
+    }
 
     showModalBottomSheet<void>(
       context: context,
@@ -218,12 +242,18 @@ class _WizardPageState extends ConsumerState<WizardPage> {
       builder: (_) => _ConfirmPublishModal(
         isNc: isNc,
         rows: rows,
+        dynamicRecipients: recipients,
+        estabelecimentoId: workspace?.estabelecimento.id,
+        empresaId: workspace?.empresaFilha.id,
         onPublish: _publicar,
       ),
     );
   }
 
-  Future<void> _publicar() async {
+  Future<void> _publicar({
+    List<String> emailsManuais = const [],
+    List<String> emailsPadraoExcluidos = const [],
+  }) async {
     final workspace = ref.read(workspaceProvider);
     final workspaceId = workspace?.estabelecimento.id;
     if (workspaceId == null) {
@@ -250,6 +280,8 @@ class _WizardPageState extends ConsumerState<WizardPage> {
         responsavelTrativaId: _responsavelTratativa?.id,
         ncAnteriorId: _ncAnterior?.id,
         empresaContratadaId: empresaFilhaId,
+        emailsManuais: emailsManuais,
+        emailsPadraoExcluidos: emailsPadraoExcluidos,
       );
       final nc = await ref.read(ncRepositoryProvider).criar(request);
       await _uploadPhotos(nc.id, isNc: true);
@@ -270,6 +302,9 @@ class _WizardPageState extends ConsumerState<WizardPage> {
         regraDeOuro: _regraDeOuro,
         responsavelDesvioId: _responsavel?.id,
         responsavelTratativaId: _responsavelTratativa?.id,
+        empresaContratadaId: empresaFilhaId,
+        emailsManuais: emailsManuais,
+        emailsPadraoExcluidos: emailsPadraoExcluidos,
       );
       final desvio = await ref.read(desvioRepositoryProvider).criar(request);
       final desvioId = desvio['id'] as String;
@@ -440,18 +475,20 @@ class _DescriptionStep extends ConsumerWidget {
         const Text('Resumo curto que aparecerá nas listagens',
             style: TextStyle(color: ProtoColors.muted2, fontSize: 11)),
         const SizedBox(height: 22),
-        _Label(isNc ? 'Descrição Detalhada' : 'Orientação Realizada'),
+        _Label(isNc ? 'Descrição Detalhada' : 'Descrição Curta'),
         _TextField(
           controller: descCtrl,
           hint: isNc
               ? 'Descreva fato, local e impacto — mínimo 20 caracteres.'
-              : 'Descreva a orientação dada ao responsável pelo desvio...',
-          maxLines: 5,
-          height: 110,
+              : 'Descreva brevemente o desvio identificado',
+          maxLines: isNc ? 5 : 3,
+          height: isNc ? 110 : 88,
         ),
-        const SizedBox(height: 6),
-        const Text('Descreva fato, local e impacto — mínimo 20 caracteres.',
-            style: TextStyle(color: ProtoColors.muted2, fontSize: 11)),
+        if (isNc) ...[
+          const SizedBox(height: 6),
+          const Text('Descreva fato, local e impacto — mínimo 20 caracteres.',
+              style: TextStyle(color: ProtoColors.muted2, fontSize: 11)),
+        ],
         if (workspaceId != null) ...[
           const SizedBox(height: 18),
           const _Label('Localização'),
@@ -630,11 +667,14 @@ class _DescriptionStep extends ConsumerWidget {
         ] else ...[
           const SizedBox(height: 22),
           const _Label('Responsáveis'),
-          const Text('Responsável pelo desvio',
+          const Text('Responsável pelo Desvio',
               style: TextStyle(
                   color: ProtoColors.muted,
                   fontSize: 11,
                   fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          const Text('Quem irá validar a tratativa',
+              style: TextStyle(color: ProtoColors.muted2, fontSize: 10)),
           const SizedBox(height: 7),
           if (workspaceId != null)
             _UserPickerRow(
@@ -650,11 +690,14 @@ class _DescriptionStep extends ConsumerWidget {
                 icon: Icons.person_outline_rounded,
                 text: 'Selecionar responsável'),
           const SizedBox(height: 14),
-          const Text('Responsável pela tratativa',
+          const Text('Responsável pela Tratativa',
               style: TextStyle(
                   color: ProtoColors.muted,
                   fontSize: 11,
                   fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          const Text('Quem irá executar a tratativa',
+              style: TextStyle(color: ProtoColors.muted2, fontSize: 10)),
           const SizedBox(height: 7),
           if (workspaceId != null)
             _UserPickerRow(
@@ -2188,11 +2231,12 @@ class _ReviewStep extends ConsumerWidget {
                 _ReviewLine('Resp. Tratativa', responsavelTrativaNome ?? '—'),
                 _ReviewLine('Reincidencia', reincidencia ? 'Sim' : 'Nao'),
                 _ReviewLine('Normas', '$normaCount selecionada(s)'),
+                _ReviewLine('Regra de Ouro', regraDeOuro ? 'Sim' : 'Nao',
+                    red: regraDeOuro),
               ] else ...[
                 _ReviewLine('Resp. Desvio', responsavelNome ?? '—'),
                 _ReviewLine('Resp. Tratativa', responsavelTrativaNome ?? '—'),
               ],
-              _ReviewLine('Regra de Ouro', regraDeOuro ? 'Sim' : 'Nao', red: regraDeOuro),
               _ReviewLine('Fotos', photosCount == 0 ? 'Sem foto' : '$photosCount foto(s)'),
             ],
           ),
@@ -2272,21 +2316,66 @@ class _ConfirmRow {
   const _ConfirmRow(this.label, this.value, {this.red = false});
 }
 
-class _ConfirmPublishModal extends StatefulWidget {
-  final bool isNc;
-  final List<_ConfirmRow> rows;
-  final Future<void> Function() onPublish;
-
-  const _ConfirmPublishModal(
-      {required this.isNc, required this.rows, required this.onPublish});
-
-  @override
-  State<_ConfirmPublishModal> createState() => _ConfirmPublishModalState();
+/// Destinatário dinâmico (automático): você + responsáveis selecionados.
+class _Recipient {
+  final String name;
+  final String email;
+  final String tag;
+  const _Recipient({required this.name, required this.email, required this.tag});
 }
 
-class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
+/// E-mail manual adicionado na seção Padrão (desmarcável).
+class _ManualPadrao {
+  final String email;
+  bool checked;
+  _ManualPadrao(this.email, this.checked);
+}
+
+class _ConfirmPublishModal extends ConsumerStatefulWidget {
+  final bool isNc;
+  final List<_ConfirmRow> rows;
+  final List<_Recipient> dynamicRecipients;
+  final String? estabelecimentoId;
+  final String? empresaId;
+  final Future<void> Function({
+    required List<String> emailsManuais,
+    required List<String> emailsPadraoExcluidos,
+  }) onPublish;
+
+  const _ConfirmPublishModal({
+    required this.isNc,
+    required this.rows,
+    required this.dynamicRecipients,
+    required this.estabelecimentoId,
+    required this.empresaId,
+    required this.onPublish,
+  });
+
+  @override
+  ConsumerState<_ConfirmPublishModal> createState() =>
+      _ConfirmPublishModalState();
+}
+
+class _ConfirmPublishModalState extends ConsumerState<_ConfirmPublishModal> {
   int stage = 0;
   String? errorMsg;
+
+  // Recipients editor state
+  final Set<String> _excluidos = {};
+  final List<String> _manuaisDinamico = [];
+  final List<_ManualPadrao> _manuaisPadrao = [];
+  final List<String> _padraoPromovidos = [];
+  final _manualCtrl = TextEditingController();
+  String _manualTipo = 'DINAMICO'; // DINAMICO | PADRAO
+  String? _manualError;
+
+  int _lastTotalCount = 0;
+
+  @override
+  void dispose() {
+    _manualCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _send() async {
     setState(() {
@@ -2294,20 +2383,94 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
       errorMsg = null;
     });
     try {
-      await widget.onPublish();
+      final emailsManuais = <String>[
+        ..._manuaisDinamico,
+        ..._padraoPromovidos,
+        ..._manuaisPadrao.where((e) => e.checked).map((e) => e.email),
+      ];
+      final emailsPadraoExcluidos = <String>[..._excluidos, ..._padraoPromovidos];
+      await widget.onPublish(
+        emailsManuais: emailsManuais,
+        emailsPadraoExcluidos: emailsPadraoExcluidos,
+      );
       if (mounted) setState(() => stage = 2);
     } catch (e) {
       if (mounted) {
         setState(() {
           stage = 0;
-          errorMsg = e.toString();
+          errorMsg = _friendlyError(e);
         });
       }
     }
   }
 
+  String _friendlyError(Object e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map) {
+        for (final k in ['message', 'error', 'mensagem', 'detail']) {
+          final v = data[k];
+          if (v is String && v.isNotEmpty) return v;
+        }
+      }
+      if (e.response?.statusCode == 422) {
+        return 'Dados inválidos. Verifique os campos e tente novamente.';
+      }
+    }
+    return 'Erro ao publicar. Verifique os dados e tente novamente.';
+  }
+
+  void _addManual(List<EmailPadrao> padraoFiltrados) {
+    final em = _manualCtrl.text.trim();
+    if (em.isEmpty) return;
+    final emDinamico = widget.dynamicRecipients.any((r) => r.email == em) ||
+        _manuaisDinamico.contains(em) ||
+        _padraoPromovidos.contains(em);
+    final emPadrao = padraoFiltrados.any((ep) => ep.email == em) ||
+        _manuaisPadrao.any((e) => e.email == em);
+    if (emDinamico) {
+      setState(() => _manualError = 'Este email já está vinculado nos Dinâmicos');
+      return;
+    }
+    if (emPadrao) {
+      setState(() => _manualError = 'Este email já está vinculado nos Padrão');
+      return;
+    }
+    setState(() {
+      _manualError = null;
+      if (_manualTipo == 'DINAMICO') {
+        _manuaisDinamico.add(em);
+      } else {
+        _manuaisPadrao.add(_ManualPadrao(em, true));
+      }
+      _manualCtrl.clear();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final emailsPadrao =
+        (widget.estabelecimentoId != null && widget.empresaId != null)
+            ? (ref.watch(emailsPadraoProvider((
+                  estabelecimentoId: widget.estabelecimentoId!,
+                  empresaId: widget.empresaId!,
+                ))).valueOrNull ??
+                const <EmailPadrao>[])
+            : const <EmailPadrao>[];
+
+    final dynamicEmails = widget.dynamicRecipients.map((r) => r.email).toSet();
+    final padraoFiltrados = emailsPadrao
+        .where((ep) =>
+            !dynamicEmails.contains(ep.email) &&
+            !_padraoPromovidos.contains(ep.email))
+        .toList();
+    final totalCount = widget.dynamicRecipients.length +
+        _manuaisDinamico.length +
+        _padraoPromovidos.length +
+        padraoFiltrados.where((ep) => !_excluidos.contains(ep.email)).length +
+        _manuaisPadrao.where((e) => e.checked).length;
+    _lastTotalCount = totalCount;
+
     return Stack(
       children: [
         Positioned.fill(
@@ -2318,7 +2481,10 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
         Align(
           alignment: Alignment.bottomCenter,
           child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.92),
+            padding: EdgeInsets.fromLTRB(
+                20, 8, 20, 24 + MediaQuery.of(context).viewInsets.bottom),
             decoration: const BoxDecoration(
                 color: ProtoColors.surface,
                 borderRadius:
@@ -2361,56 +2527,224 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
                             color: ProtoColors.muted, fontSize: 12)),
                   ),
                   const SizedBox(height: 16),
-                  // Rows de dados reais — rolável se muitos itens
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 280),
+                  // Rows + destinatários — rolável (encolhe p/ caber erro+botões)
+                  Flexible(
                     child: SingleChildScrollView(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: ProtoColors.surface2,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: ProtoColors.border),
-                        ),
-                        child: Column(
-                          children: [
-                            for (int i = 0; i < widget.rows.length; i++) ...[
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 10),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    SizedBox(
-                                      width: 110,
-                                      child: Text(widget.rows[i].label,
-                                          style: const TextStyle(
-                                              color: ProtoColors.muted,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Resumo de dados
+                          Container(
+                            decoration: BoxDecoration(
+                              color: ProtoColors.surface2,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: ProtoColors.border),
+                            ),
+                            child: Column(
+                              children: [
+                                for (int i = 0; i < widget.rows.length; i++) ...[
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 10),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        SizedBox(
+                                          width: 110,
+                                          child: Text(widget.rows[i].label,
+                                              style: const TextStyle(
+                                                  color: ProtoColors.muted,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700)),
+                                        ),
+                                        Expanded(
+                                          child: Text(widget.rows[i].value,
+                                              style: TextStyle(
+                                                  color: widget.rows[i].red
+                                                      ? ProtoColors.red
+                                                      : ProtoColors.text,
+                                                  fontSize: 13,
+                                                  fontWeight: widget.rows[i].red
+                                                      ? FontWeight.w800
+                                                      : FontWeight.w600)),
+                                        ),
+                                      ],
                                     ),
-                                    Expanded(
-                                      child: Text(widget.rows[i].value,
-                                          style: TextStyle(
-                                              color: widget.rows[i].red
-                                                  ? ProtoColors.red
-                                                  : ProtoColors.text,
-                                              fontSize: 13,
-                                              fontWeight: widget.rows[i].red
-                                                  ? FontWeight.w800
-                                                  : FontWeight.w600)),
-                                    ),
-                                  ],
+                                  ),
+                                  if (i < widget.rows.length - 1)
+                                    const Divider(
+                                        height: 1,
+                                        color: ProtoColors.border,
+                                        indent: 14,
+                                        endIndent: 14),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          // Destinatários do email de abertura
+                          Row(children: [
+                            const Icon(Icons.mail_outline_rounded,
+                                color: ProtoColors.muted, size: 14),
+                            const SizedBox(width: 6),
+                            const Expanded(
+                              child: Text('Destinatários do email de abertura',
+                                  style: TextStyle(
+                                      color: ProtoColors.text,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800)),
+                            ),
+                            Text('$totalCount selecionados',
+                                style: const TextStyle(
+                                    color: ProtoColors.muted, fontSize: 12)),
+                          ]),
+                          const SizedBox(height: 10),
+                          // Grupo: Dinâmicos
+                          _groupLabel('Dinâmicos (automáticos)'),
+                          ...widget.dynamicRecipients.map((r) => _recipientLine(
+                                leading: _dot(ProtoColors.blue),
+                                name: r.name,
+                                email: r.email,
+                                tag: r.tag,
+                              )),
+                          ..._manuaisDinamico.map((email) => _recipientLine(
+                                leading: _dot(ProtoColors.blue),
+                                name: 'Manual',
+                                email: email,
+                                trailing: _iconBtn(Icons.close, () {
+                                  setState(
+                                      () => _manuaisDinamico.remove(email));
+                                }),
+                              )),
+                          ..._padraoPromovidos.map((email) => _recipientLine(
+                                leading: _dot(ProtoColors.blue),
+                                name: email,
+                                tag: '— Promovido',
+                                trailing: _iconBtn(Icons.close, () {
+                                  setState(
+                                      () => _padraoPromovidos.remove(email));
+                                }),
+                              )),
+                          // Grupo: Padrão (desmarcáveis)
+                          if (padraoFiltrados.isNotEmpty ||
+                              _manuaisPadrao.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            _groupLabel('Padrão (desmarcáveis)'),
+                            ...padraoFiltrados.map((ep) {
+                              final excluido = _excluidos.contains(ep.email);
+                              return _recipientLine(
+                                leading: _checkbox(!excluido, () {
+                                  setState(() {
+                                    if (excluido) {
+                                      _excluidos.remove(ep.email);
+                                    } else {
+                                      _excluidos.add(ep.email);
+                                    }
+                                  });
+                                }),
+                                name: ep.email,
+                                tag: ep.descricao != null
+                                    ? '— ${ep.descricao}'
+                                    : null,
+                                trailing: _iconBtn(Icons.arrow_upward, () {
+                                  setState(
+                                      () => _padraoPromovidos.add(ep.email));
+                                }),
+                              );
+                            }),
+                            ..._manuaisPadrao.map((mp) => _recipientLine(
+                                  leading: _checkbox(mp.checked, () {
+                                    setState(() => mp.checked = !mp.checked);
+                                  }),
+                                  name: mp.email,
+                                  tag: '— Manual',
+                                  trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        _iconBtn(Icons.arrow_upward, () {
+                                          setState(() {
+                                            _manuaisPadrao.remove(mp);
+                                            _manuaisDinamico.add(mp.email);
+                                          });
+                                        }),
+                                        _iconBtn(Icons.close, () {
+                                          setState(
+                                              () => _manuaisPadrao.remove(mp));
+                                        }),
+                                      ]),
+                                )),
+                          ],
+                          // Adicionar manual
+                          const SizedBox(height: 12),
+                          Row(children: [
+                            _tipoTab('DINAMICO', 'Dinâmico'),
+                            const SizedBox(width: 6),
+                            _tipoTab('PADRAO', 'Padrão'),
+                          ]),
+                          if (_manualError != null) ...[
+                            const SizedBox(height: 6),
+                            Text(_manualError!,
+                                style: const TextStyle(
+                                    color: ProtoColors.red, fontSize: 11)),
+                          ],
+                          const SizedBox(height: 8),
+                          Row(children: [
+                            Expanded(
+                              child: Container(
+                                height: 44,
+                                decoration: BoxDecoration(
+                                    color: ProtoColors.surface2,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                        color: _manualError != null
+                                            ? ProtoColors.red
+                                            : ProtoColors.border)),
+                                child: TextField(
+                                  controller: _manualCtrl,
+                                  keyboardType: TextInputType.emailAddress,
+                                  onChanged: (_) {
+                                    if (_manualError != null) {
+                                      setState(() => _manualError = null);
+                                    }
+                                  },
+                                  onSubmitted: (_) =>
+                                      _addManual(padraoFiltrados),
+                                  style: const TextStyle(
+                                      color: ProtoColors.text, fontSize: 13),
+                                  decoration: const InputDecoration(
+                                      hintText: 'email@empresa.com',
+                                      hintStyle: TextStyle(
+                                          color: ProtoColors.muted,
+                                          fontSize: 13),
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 12),
+                                      border: InputBorder.none),
                                 ),
                               ),
-                              if (i < widget.rows.length - 1)
-                                const Divider(
-                                    height: 1,
-                                    color: ProtoColors.border,
-                                    indent: 14,
-                                    endIndent: 14),
-                            ],
-                          ],
-                        ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              height: 44,
+                              child: FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                    backgroundColor: ProtoColors.blue
+                                        .withValues(alpha: .18),
+                                    foregroundColor: ProtoColors.blue,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(10))),
+                                onPressed: () => _addManual(padraoFiltrados),
+                                icon: const Icon(Icons.add, size: 16),
+                                label: const Text('Adicionar',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13)),
+                              ),
+                            ),
+                          ]),
+                        ],
                       ),
                     ),
                   ),
@@ -2445,7 +2779,7 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
                     Expanded(
                         flex: 2,
                         child: _FooterButton(
-                            label: 'Publicar',
+                            label: 'Registrar e notificar',
                             icon: Icons.send_outlined,
                             onTap: _send)),
                   ]),
@@ -2461,9 +2795,10 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
                         fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Salvando dados e enviando fotos.',
-                    style: TextStyle(color: ProtoColors.muted, fontSize: 13),
+                  Text(
+                    'Notificando $_lastTotalCount destinatário${_lastTotalCount == 1 ? '' : 's'}.',
+                    style: const TextStyle(
+                        color: ProtoColors.muted, fontSize: 13),
                   ),
                   const SizedBox(height: 32),
                 ] else ...[
@@ -2490,10 +2825,10 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
                         fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Os responsaveis foram notificados.',
+                  Text(
+                    '$_lastTotalCount destinatário${_lastTotalCount == 1 ? '' : 's'} notificado${_lastTotalCount == 1 ? '' : 's'}.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                         color: ProtoColors.muted, fontSize: 13, height: 1.4),
                   ),
                   const SizedBox(height: 24),
@@ -2504,6 +2839,116 @@ class _ConfirmPublishModalState extends State<_ConfirmPublishModal> {
           ),
         ),
       ],
+    );
+  }
+
+  // ── Recipients editor helpers ────────────────────────────────────────────
+  Widget _groupLabel(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 2, top: 2),
+        child: Text(text,
+            style: const TextStyle(
+                color: ProtoColors.muted,
+                fontSize: 10,
+                letterSpacing: .3,
+                fontWeight: FontWeight.w800)),
+      );
+
+  Widget _dot(Color color) => Container(
+      width: 7,
+      height: 7,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle));
+
+  Widget _checkbox(bool checked, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            color: checked ? ProtoColors.blue : Colors.transparent,
+            borderRadius: BorderRadius.circular(5),
+            border: Border.all(
+                color: checked ? ProtoColors.blue : ProtoColors.borderStrong,
+                width: 1.5),
+          ),
+          child: checked
+              ? const Icon(Icons.check, color: Colors.white, size: 12)
+              : null,
+        ),
+      );
+
+  Widget _iconBtn(IconData icon, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          child: Icon(icon, color: ProtoColors.muted, size: 15),
+        ),
+      );
+
+  Widget _recipientLine({
+    required Widget leading,
+    required String name,
+    String? email,
+    String? tag,
+    Widget? trailing,
+  }) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(children: [
+          leading,
+          const SizedBox(width: 9),
+          Expanded(
+            child: Row(children: [
+              Flexible(
+                child: Text(name,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: ProtoColors.text,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700)),
+              ),
+              if (email != null) ...[
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text('<$email>',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: ProtoColors.muted, fontSize: 11)),
+                ),
+              ],
+            ]),
+          ),
+          if (tag != null) ...[
+            const SizedBox(width: 6),
+            Text(tag,
+                style: const TextStyle(
+                    color: ProtoColors.blue,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700)),
+          ],
+          if (trailing != null) trailing,
+        ]),
+      );
+
+  Widget _tipoTab(String value, String label) {
+    final active = _manualTipo == value;
+    return GestureDetector(
+      onTap: () => setState(() => _manualTipo = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: active
+              ? ProtoColors.blue.withValues(alpha: .18)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+              color: active ? ProtoColors.blue : ProtoColors.border),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                color: active ? ProtoColors.blue : ProtoColors.muted,
+                fontSize: 11,
+                fontWeight: FontWeight.w700)),
+      ),
     );
   }
 }

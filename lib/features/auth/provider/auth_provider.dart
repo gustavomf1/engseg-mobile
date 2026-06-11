@@ -1,18 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../model/login_response.dart';
+import '../model/workspace_state.dart';
 import '../repository/auth_repository_impl.dart';
 import '../../../core/notifications/fcm_provider.dart';
+import '../../../core/network/auth_reset.dart';
 
 final authProvider = AsyncNotifierProvider<AuthNotifier, LoginResponse?>(
   AuthNotifier.new,
 );
 
-final workspaceProvider = StateProvider<String?>((ref) => null);
+final workspaceProvider = StateProvider<WorkspaceState?>((ref) => null);
 
 class AuthNotifier extends AsyncNotifier<LoginResponse?> {
   @override
   Future<LoginResponse?> build() async {
+    registerForceLogoutCallback(() => state = const AsyncData(null));
     return ref.read(authRepositoryProvider).getSession();
   }
 

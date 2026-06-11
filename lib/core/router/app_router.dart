@@ -32,7 +32,12 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (!isLoggedIn && !isLoggingIn) return '/login';
 
-      if (isLoggedIn && isLoggingIn) return '/feed';
+      if (isLoggedIn && isLoggingIn) {
+        final perfil = authState.valueOrNull?.perfil;
+        final workspace = ref.read(workspaceProvider);
+        final isExterno = perfil == 'EXTERNO';
+        return (isExterno || workspace != null) ? '/feed' : '/workspace';
+      }
 
       final perfil = authState.valueOrNull?.perfil;
       if (state.matchedLocation == '/dashboard' && perfil != 'ENGENHEIRO') {

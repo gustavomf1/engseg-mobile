@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:go_router/go_router.dart';
 import '../config/app_config.dart';
 import '../router/navigator_key.dart';
+import 'auth_reset.dart';
 
 final _secureStorageProvider = Provider<FlutterSecureStorage>(
   (_) => const FlutterSecureStorage(),
@@ -36,10 +36,11 @@ Dio buildDio(FlutterSecureStorage storage) {
       onError: (error, handler) async {
         if (error.response?.statusCode == 401) {
           await storage.deleteAll();
-          final context = navigatorKey.currentContext;
-          if (context != null && context.mounted) {
-            GoRouter.of(context).go('/login');
-          }
+          triggerForceLogout();
+          handler.resolve(
+            Response(requestOptions: error.requestOptions, statusCode: 200, data: null),
+          );
+          return;
         }
         handler.next(error);
       },

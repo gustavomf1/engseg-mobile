@@ -22,7 +22,7 @@ class DraftsPage extends ConsumerWidget {
           data: (drafts) => ListView(
             padding: const EdgeInsets.fromLTRB(16, 6, 16, 104),
             children: [
-              Row(children: [const Expanded(child: ProtoStatusBar()), ProtoIconButton(icon: Icons.notifications_none_rounded, onTap: () {})]),
+              Align(alignment: Alignment.centerRight, child: ProtoIconButton(icon: Icons.notifications_none_rounded, onTap: () {})),
               const SizedBox(height: 8),
               const Text('Rascunhos', style: TextStyle(color: ProtoColors.text, fontSize: 22, fontWeight: FontWeight.w900)),
               const SizedBox(height: 3),

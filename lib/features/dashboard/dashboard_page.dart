@@ -11,7 +11,7 @@ class DashboardPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final workspaceId = ref.watch(workspaceProvider);
+    final workspaceId = ref.watch(workspaceProvider)?.estabelecimento.id;
     final AsyncValue<DashboardStats?> statsAsync = workspaceId != null
         ? ref.watch(dashboardProvider(workspaceId)).whenData((s) => s as DashboardStats?)
         : const AsyncData(null);
@@ -23,12 +23,7 @@ class DashboardPage extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 6, 16, 104),
           children: [
-            Row(
-              children: [
-                const Expanded(child: ProtoStatusBar()),
-                ProtoIconButton(icon: Icons.notifications_none_rounded, onTap: () {}),
-              ],
-            ),
+            Align(alignment: Alignment.centerRight, child: ProtoIconButton(icon: Icons.notifications_none_rounded, onTap: () {})),
             const SizedBox(height: 8),
             const Text('Dashboard', style: TextStyle(color: ProtoColors.text, fontSize: 24, fontWeight: FontWeight.w900, height: 1)),
             const SizedBox(height: 4),

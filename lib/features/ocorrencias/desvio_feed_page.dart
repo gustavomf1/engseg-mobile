@@ -74,6 +74,22 @@ class _DesvioCard extends StatelessWidget {
   final DesvioSummary d;
   const _DesvioCard({required this.d});
 
+  Color _statusBg() => switch (d.status) {
+    'CONCLUIDA' || 'FECHADA' => const Color(0xFF0B3A1C),
+    'EM_AJUSTE_PELO_EXTERNO' || 'NAO_RESOLVIDA' => const Color(0xFF4A1017),
+    'EM_EXECUCAO' => const Color(0xFF2A164A),
+    'AGUARDANDO_VALIDACAO_FINAL' => const Color(0xFF12204A),
+    _ => const Color(0xFF0A2A4A),
+  };
+
+  Color _statusFg() => switch (d.status) {
+    'CONCLUIDA' || 'FECHADA' => ProtoColors.green,
+    'EM_AJUSTE_PELO_EXTERNO' || 'NAO_RESOLVIDA' => ProtoColors.red,
+    'EM_EXECUCAO' => const Color(0xFFD2A8FF),
+    'AGUARDANDO_VALIDACAO_FINAL' => const Color(0xFF93C5FD),
+    _ => ProtoColors.blue,
+  };
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -92,8 +108,8 @@ class _DesvioCard extends StatelessWidget {
                     fg: ProtoColors.yellow),
                 ProtoPill(
                   label: statusLabel[d.status] ?? d.status,
-                  bg: ProtoColors.surface2,
-                  fg: ProtoColors.blue,
+                  bg: _statusBg(),
+                  fg: _statusFg(),
                 ),
               ]),
               const SizedBox(height: 8),

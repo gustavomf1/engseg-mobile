@@ -55,8 +55,8 @@ class DesvioDetail {
         responsavelDesvioId: j['responsavelDesvioId'] as String?,
         responsavelDesvioNome: j['responsavelDesvioNome'] as String?,
         responsavelTratativaId: j['responsavelTratativaId'] as String?,
-        // chave backend tem typo "Triva" (não "Tativa")
-        responsavelTratativaNome: j['responsavelTrivaNome'] as String?,
+        // chave backend tem typo "Trativa" (DesvioResponse.responsavelTrativaNome)
+        responsavelTratativaNome: j['responsavelTrativaNome'] as String?,
         usuarioCriacaoNome: j['usuarioCriacaoNome'] as String?,
         usuarioCriacaoEmail: j['usuarioCriacaoEmail'] as String?,
         tratativas: (j['tratativas'] as List<dynamic>? ?? [])

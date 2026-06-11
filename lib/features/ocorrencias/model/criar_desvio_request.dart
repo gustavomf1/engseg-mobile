@@ -7,6 +7,7 @@ class CriarDesvioRequest {
   final bool regraDeOuro;
   final String? responsavelDesvioId;
   final String? responsavelTratativaId;
+  final String? empresaContratadaId;
   final List<String> emailsManuais;
   final List<String> emailsPadraoExcluidos;
 
@@ -19,6 +20,7 @@ class CriarDesvioRequest {
     this.regraDeOuro = false,
     this.responsavelDesvioId,
     this.responsavelTratativaId,
+    this.empresaContratadaId,
     this.emailsManuais = const [],
     this.emailsPadraoExcluidos = const [],
   });
@@ -32,6 +34,7 @@ class CriarDesvioRequest {
     'regraDeOuro': regraDeOuro,
     if (responsavelDesvioId != null) 'responsavelDesvioId': responsavelDesvioId,
     if (responsavelTratativaId != null) 'responsavelTratativaId': responsavelTratativaId,
+    if (empresaContratadaId != null) 'empresaContratadaId': empresaContratadaId,
     'emailsManuais': emailsManuais,
     'emailsPadraoExcluidos': emailsPadraoExcluidos,
   };

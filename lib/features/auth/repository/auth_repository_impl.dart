@@ -49,8 +49,32 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<LoginResponse?> getSession() async {
     final sessionJson = await storage.read(key: 'user_session');
     if (sessionJson == null) return null;
+
+    final token = await storage.read(key: 'jwt_token');
+    if (token == null || _isTokenExpired(token)) {
+      await storage.deleteAll();
+      return null;
+    }
+
     return LoginResponse.fromJson(
       jsonDecode(sessionJson) as Map<String, dynamic>,
     );
+  }
+
+  bool _isTokenExpired(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+      ) as Map<String, dynamic>;
+      final exp = payload['exp'] as int?;
+      if (exp == null) return false;
+      return DateTime.now().isAfter(
+        DateTime.fromMillisecondsSinceEpoch(exp * 1000),
+      );
+    } catch (_) {
+      return true;
+    }
   }
 }

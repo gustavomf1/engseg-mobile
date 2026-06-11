@@ -10,7 +10,72 @@ import '../../../core/network/dio_client.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/ocorrencias_cache_dao.dart';
 
-final ncListProvider = FutureProvider.family<List<NcSummary>, String>(
+// ── Workflow action helpers ────────────────────────────────────────────────
+Future<NcDetail> ativarNc(Dio dio, String ncId) async {
+  final r = await dio.post<Map<String, dynamic>>('/api/nao-conformidades/$ncId/ativar');
+  return NcDetail.fromJson(r.data!);
+}
+
+Future<NcDetail> submeterInvestigacao(Dio dio, String ncId, Map<String, dynamic> payload) async {
+  final r = await dio.post<Map<String, dynamic>>('/api/nao-conformidades/$ncId/investigacao', data: payload);
+  return NcDetail.fromJson(r.data!);
+}
+
+Future<NcDetail> aprovarPlano(Dio dio, String ncId) async {
+  final r = await dio.post<Map<String, dynamic>>('/api/nao-conformidades/$ncId/aprovar-plano');
+  return NcDetail.fromJson(r.data!);
+}
+
+Future<NcDetail> rejeitarPlano(Dio dio, String ncId, String motivo) async {
+  final r = await dio.post<Map<String, dynamic>>('/api/nao-conformidades/$ncId/rejeitar-plano', data: {'motivo': motivo});
+  return NcDetail.fromJson(r.data!);
+}
+
+Future<NcDetail> submeterExecucao(Dio dio, String ncId, List<Map<String, dynamic>> atividades) async {
+  final r = await dio.post<Map<String, dynamic>>('/api/nao-conformidades/$ncId/submeter-execucao', data: {'atividades': atividades});
+  return NcDetail.fromJson(r.data!);
+}
+
+Future<NcDetail> aprovarEvidencias(Dio dio, String ncId) async {
+  final r = await dio.post<Map<String, dynamic>>('/api/nao-conformidades/$ncId/aprovar-evidencias');
+  return NcDetail.fromJson(r.data!);
+}
+
+Future<NcDetail> rejeitarEvidencias(Dio dio, String ncId, String motivo) async {
+  final r = await dio.post<Map<String, dynamic>>('/api/nao-conformidades/$ncId/rejeitar-evidencias', data: {'motivo': motivo});
+  return NcDetail.fromJson(r.data!);
+}
+
+Future<NcDetail> revisarAtividades(Dio dio, String ncId, List<Map<String, dynamic>> decisoes, {String? comentario, bool porqueRejeitado = false}) async {
+  final r = await dio.post<Map<String, dynamic>>(
+    '/api/nao-conformidades/$ncId/revisar-atividades',
+    data: {
+      'decisoes': decisoes,
+      if (comentario != null && comentario.isNotEmpty) 'comentario': comentario,
+      'porqueRejeitado': porqueRejeitado,
+    },
+  );
+  return NcDetail.fromJson(r.data!);
+}
+
+Future<NcDetail> revisarExecucao(Dio dio, String ncId, List<Map<String, dynamic>> decisoes, {String? comentario}) async {
+  final r = await dio.post<Map<String, dynamic>>(
+    '/api/nao-conformidades/$ncId/revisar-execucao',
+    data: {
+      'decisoes': decisoes,
+      if (comentario != null && comentario.isNotEmpty) 'comentario': comentario,
+    },
+  );
+  return NcDetail.fromJson(r.data!);
+}
+
+final evidenciasNcProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, ncId) async {
+  final dio = ref.watch(dioProvider);
+  final r = await dio.get<List<dynamic>>('/api/evidencias/nao-conformidade/$ncId');
+  return (r.data ?? []).cast<Map<String, dynamic>>();
+});
+
+final ncListProvider = FutureProvider.family<List<NcSummary>, String?>(
   (ref, estabelecimentoId) async {
     return ref.watch(ncRepositoryProvider).listar(
           estabelecimentoId: estabelecimentoId,
