@@ -13,7 +13,7 @@ final desvioRepositoryProvider = Provider<DesvioRepository>((ref) {
   return DesvioRepositoryImpl(dio: ref.watch(dioProvider));
 });
 
-final desvioListProvider = FutureProvider.family<List<DesvioSummary>, String>(
+final desvioListProvider = FutureProvider.family<List<DesvioSummary>, String?>(
   (ref, estabelecimentoId) async {
     return ref.read(desvioRepositoryProvider).listar(
           estabelecimentoId: estabelecimentoId,
