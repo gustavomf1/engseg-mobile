@@ -13,9 +13,17 @@ class DesvioFeedPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final workspaceId = ref.watch(workspaceProvider)?.estabelecimento.id;
-    final async = workspaceId != null
-        ? ref.watch(desvioListProvider(workspaceId))
+    final session = ref.watch(authProvider).valueOrNull;
+    final isExterno = session?.perfil == 'EXTERNO';
+    final workspace = ref.watch(workspaceProvider);
+    final workspaceId = workspace?.estabelecimento.id;
+    final providerKey = isExterno ? null : workspaceId;
+    final async = (isExterno || workspaceId != null)
+        ? ref.watch(desvioListProvider(providerKey)).whenData(
+              (list) => isExterno
+                  ? list.where((d) => d.responsavelTratativaId == session?.id).toList()
+                  : list,
+            )
         : const AsyncData<List<DesvioSummary>>([]);
 
     return Scaffold(
@@ -31,10 +39,10 @@ class DesvioFeedPage extends ConsumerWidget {
           color: ProtoColors.blue,
           backgroundColor: const Color(0xFF1A2233),
           onRefresh: () async {
-            if (workspaceId != null) {
-              ref.invalidate(desvioListProvider(workspaceId));
+            if (isExterno || workspaceId != null) {
+              ref.invalidate(desvioListProvider(providerKey));
               await ref
-                  .read(desvioListProvider(workspaceId).future)
+                  .read(desvioListProvider(providerKey).future)
                   .catchError((_) => <DesvioSummary>[]);
             }
           },
