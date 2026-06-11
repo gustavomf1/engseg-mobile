@@ -220,10 +220,8 @@ class _BodyState extends ConsumerState<_Body> {
         session != null && session.id == d.responsavelDesvioId;
     final isCriador = session != null &&
         (session.isAdmin || session.email == d.usuarioCriacaoEmail);
-    final isApprover = session != null &&
-        (session.isAdmin || session.perfil == 'ENGENHEIRO' || isResponsavelDesvio);
-    final canTratar =
-        session != null && (session.isAdmin || isResponsavelTratativa);
+    final isApprover = isResponsavelDesvio;
+    final canTratar = session != null && isResponsavelTratativa;
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -765,43 +763,185 @@ class _AddTratativaSheetState extends State<_AddTratativaSheet> {
     super.dispose();
   }
 
-  Future<void> _take() async {
-    final x = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
-    if (x != null) setState(() => _fotos.add(File(x.path)));
+  Future<void> _addFotos() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: ProtoColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                  color: ProtoColors.muted2, borderRadius: BorderRadius.circular(99)),
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: ProtoColors.blue.withValues(alpha: .15),
+                    borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.camera_alt_rounded, color: ProtoColors.blue, size: 20),
+              ),
+              title: const Text('Tirar foto',
+                  style: TextStyle(color: ProtoColors.text, fontWeight: FontWeight.w700)),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: ProtoColors.blue.withValues(alpha: .15),
+                    borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.photo_library_rounded, color: ProtoColors.blue, size: 20),
+              ),
+              title: const Text('Selecionar da galeria',
+                  style: TextStyle(color: ProtoColors.text, fontWeight: FontWeight.w700)),
+              subtitle: const Text('Múltiplas fotos',
+                  style: TextStyle(color: ProtoColors.muted, fontSize: 12)),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+    if (source == ImageSource.camera) {
+      final x = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+      if (x != null) setState(() => _fotos.add(File(x.path)));
+    } else {
+      final xs = await _picker.pickMultiImage(imageQuality: 85);
+      if (xs.isNotEmpty) setState(() => _fotos.addAll(xs.map((x) => File(x.path))));
+    }
   }
+
+  Widget _fieldLabel(String label) => Text(
+        label,
+        style: const TextStyle(
+            color: Color(0xFFD7E8FF),
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: .4),
+      );
+
+  InputDecoration _fieldDecoration(String hint) => InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: ProtoColors.muted, fontSize: 13),
+        filled: true,
+        fillColor: ProtoColors.surface2,
+        contentPadding: const EdgeInsets.all(14),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: ProtoColors.border)),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: ProtoColors.border)),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: ProtoColors.blue, width: 1.5)),
+      );
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 18, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                  color: ProtoColors.muted2, borderRadius: BorderRadius.circular(99)),
+            ),
+          ),
           const ProtoSectionTitle('Nova tratativa'),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          _fieldLabel('TÍTULO *'),
+          const SizedBox(height: 6),
           TextField(
             controller: _titulo,
-            style: const TextStyle(color: ProtoColors.text),
-            decoration: const InputDecoration(hintText: 'Titulo'),
+            style: const TextStyle(
+                color: ProtoColors.text, fontSize: 14, fontWeight: FontWeight.w600),
+            decoration: _fieldDecoration('Ex: Instalação de proteção coletiva'),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
+          _fieldLabel('DESCRIÇÃO *'),
+          const SizedBox(height: 6),
           TextField(
             controller: _descricao,
-            maxLines: 2,
-            style: const TextStyle(color: ProtoColors.text),
-            decoration: const InputDecoration(hintText: 'Descricao'),
+            maxLines: 4,
+            minLines: 3,
+            style: const TextStyle(color: ProtoColors.text, fontSize: 13, height: 1.4),
+            decoration: _fieldDecoration('Descreva o que foi feito...'),
           ),
-          const SizedBox(height: 12),
-          Row(children: [
-            ProtoIconButton(icon: Icons.camera_alt_outlined, onTap: _take),
-            const SizedBox(width: 10),
-            Text('${_fotos.length} foto(s)',
-                style: const TextStyle(color: ProtoColors.muted, fontSize: 12)),
-          ]),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+          _fieldLabel('FOTOS *'),
+          const SizedBox(height: 8),
           SizedBox(
-            height: 48,
+            height: 84,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _fotos.length + 1,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (_, i) {
+                if (i == _fotos.length) {
+                  return GestureDetector(
+                    onTap: _addFotos,
+                    child: Container(
+                      width: 84,
+                      decoration: BoxDecoration(
+                        color: ProtoColors.surface2,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: ProtoColors.border),
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_photo_alternate_rounded,
+                              color: ProtoColors.blue, size: 22),
+                          SizedBox(height: 4),
+                          Text('Adicionar',
+                              style: TextStyle(
+                                  color: ProtoColors.blue,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                return Stack(children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(_fotos[i], width: 84, height: 84, fit: BoxFit.cover),
+                  ),
+                  Positioned(
+                    top: 4, right: 4,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _fotos.removeAt(i)),
+                      child: Container(
+                        width: 22, height: 22,
+                        decoration: BoxDecoration(
+                            color: Colors.black54, borderRadius: BorderRadius.circular(99)),
+                        child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
+                      ),
+                    ),
+                  ),
+                ]);
+              },
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 50,
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -815,14 +955,15 @@ class _AddTratativaSheetState extends State<_AddTratativaSheet> {
                     _descricao.text.trim().isEmpty ||
                     _fotos.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Titulo, descricao e 1 foto obrigatorios')));
+                      content: Text('Título, descrição e ao menos 1 foto são obrigatórios'),
+                      backgroundColor: ProtoColors.red));
                   return;
                 }
                 Navigator.pop(context,
-                    _NovaTratativa(_titulo.text.trim(), _descricao.text.trim(), _fotos));
+                    _NovaTratativa(_titulo.text.trim(), _descricao.text.trim(), List.of(_fotos)));
               },
               child: const Text('Salvar tratativa',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
             ),
           ),
         ],
