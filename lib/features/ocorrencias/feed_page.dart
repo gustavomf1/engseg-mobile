@@ -20,22 +20,34 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
   @override
   Widget build(BuildContext context) {
-    final workspaceId = ref.watch(workspaceProvider);
-    final ncsAsync = workspaceId != null
-        ? ref.watch(ncListProvider(workspaceId))
+    final session = ref.watch(authProvider).valueOrNull;
+    final isExterno = session?.perfil == 'EXTERNO';
+    final workspace = ref.watch(workspaceProvider);
+    final workspaceId = workspace?.estabelecimento.id;
+    final ncsAsync = (isExterno || workspaceId != null)
+        ? ref.watch(ncListProvider(isExterno ? null : workspaceId)).whenData(
+              (ncs) => isExterno
+                  ? ncs.where((nc) => nc.responsavelTratativaId == session?.id).toList()
+                  : ncs,
+            )
         : const AsyncData<List<NcSummary>>([]);
+
+    final providerKey = isExterno ? null : workspaceId;
 
     return Scaffold(
       backgroundColor: ProtoColors.bg,
       body: SafeArea(
         bottom: false,
-        child: ListView(
+        child: RefreshIndicator(
+          color: ProtoColors.blue,
+          backgroundColor: const Color(0xFF1A2233),
+          onRefresh: () async {
+            ref.invalidate(ncListProvider(providerKey));
+            await ref.read(ncListProvider(providerKey).future).catchError((_) => <NcSummary>[]);
+          },
+          child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 6, 16, 104),
           children: [
-            const ProtoStatusBar(),
-            const SizedBox(height: 12),
-            const _PushBanner(),
-            const SizedBox(height: 12),
             ncsAsync.when(
               loading: () => Row(
                 children: [
@@ -51,6 +63,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 final todas = ncs.length;
                 final abertas = ncs.where((n) => n.status == 'ABERTA').length;
                 final vencidas = ncs.where((n) => n.vencida).length;
+                final concluidas = ncs.where((n) => n.status == 'CONCLUIDA' || n.status == 'FECHADA').length;
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -58,6 +71,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                       _FilterChip(label: 'Todas', value: 'todas', count: todas, active: filter == 'todas', onTap: _setFilter),
                       _FilterChip(label: 'Abertas', value: 'abertas', count: abertas, active: filter == 'abertas', onTap: _setFilter),
                       _FilterChip(label: 'Vencidas', value: 'vencidas', count: vencidas, active: filter == 'vencidas', onTap: _setFilter),
+                      _FilterChip(label: 'Concluídas', value: 'concluidas', count: concluidas, active: filter == 'concluidas', onTap: _setFilter),
                     ],
                   ),
                 );
@@ -77,6 +91,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                   return switch (filter) {
                     'abertas' => nc.status == 'ABERTA',
                     'vencidas' => nc.vencida,
+                    'concluidas' => nc.status == 'CONCLUIDA' || nc.status == 'FECHADA',
                     _ => true,
                   };
                 }).toList();
@@ -100,6 +115,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
             const Center(child: Text('fim da lista', style: TextStyle(color: ProtoColors.muted2, fontSize: 11))),
           ],
         ),
+        ),
       ),
     );
   }
@@ -107,36 +123,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   void _setFilter(String value) => setState(() => filter = value);
 }
 
-class _PushBanner extends StatelessWidget {
-  const _PushBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return ProtoCard(
-      color: ProtoColors.surface,
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          Container(width: 38, height: 38, decoration: BoxDecoration(color: ProtoColors.purple, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.shield_outlined, color: Colors.white, size: 20)),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('ENGSEG', style: TextStyle(color: ProtoColors.muted, fontSize: 10, fontWeight: FontWeight.w900)),
-                SizedBox(height: 3),
-                Text('NC-2026-0287 atribuida a voce', style: TextStyle(color: ProtoColors.text, fontSize: 13, fontWeight: FontWeight.w900)),
-                SizedBox(height: 2),
-                Text('"Trabalho em altura sem ancoragem dupla..." - Refinaria Paulinia', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: ProtoColors.muted, fontSize: 12)),
-              ],
-            ),
-          ),
-          const Text('agora', style: TextStyle(color: ProtoColors.muted2, fontSize: 10)),
-        ],
-      ),
-    );
-  }
-}
 
 class _FilterChip extends StatelessWidget {
   final String label;
@@ -190,7 +176,7 @@ class _NcCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () => context.go('/oc/${nc.id}'),
+        onTap: () => context.push('/oc/${nc.id}'),
         child: ProtoCard(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -249,14 +235,14 @@ class _NcCard extends StatelessWidget {
 
   Color _statusBg() {
     if (nc.vencida) return const Color(0xFF4A1017);
-    if (nc.status == 'CONCLUIDO') return const Color(0xFF0B3A1C);
+    if (nc.status == 'CONCLUIDA' || nc.status == 'FECHADA') return const Color(0xFF0B3A1C);
     if (nc.status == 'EM_EXECUCAO') return const Color(0xFF2A164A);
     return const Color(0xFF4A390A);
   }
 
   Color _statusFg() {
     if (nc.vencida) return ProtoColors.red;
-    if (nc.status == 'CONCLUIDO') return ProtoColors.green;
+    if (nc.status == 'CONCLUIDA' || nc.status == 'FECHADA') return ProtoColors.green;
     if (nc.status == 'EM_EXECUCAO') return const Color(0xFFD2A8FF);
     return ProtoColors.yellow;
   }
