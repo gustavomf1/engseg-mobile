@@ -6,6 +6,7 @@ class NcSummary {
   final String estabelecimentoNome;
   final String dataRegistro;
   final bool vencida;
+  final String? responsavelTratativaId;
 
   const NcSummary({
     required this.id,
@@ -15,15 +16,29 @@ class NcSummary {
     required this.estabelecimentoNome,
     required this.dataRegistro,
     required this.vencida,
+    this.responsavelTratativaId,
   });
 
-  factory NcSummary.fromJson(Map<String, dynamic> json) => NcSummary(
-        id: json['id'] as String,
-        titulo: json['titulo'] as String,
-        status: json['status'] as String,
-        nivelRisco: json['nivelRisco'] as String? ?? 'MEDIO',
-        estabelecimentoNome: json['estabelecimentoNome'] as String? ?? '',
-        dataRegistro: json['dataRegistro'] as String? ?? '',
-        vencida: json['vencida'] as bool? ?? false,
-      );
+  factory NcSummary.fromJson(Map<String, dynamic> json) {
+    final status = json['status'] as String;
+    final concluida = status == 'CONCLUIDA' || status == 'FECHADA' || status == 'APROVADA';
+    final prazoStr = json['dataLimiteResolucao'] as String?;
+    final vencidaApi = json['vencida'] as bool? ?? false;
+    bool vencida = vencidaApi;
+    if (!concluida && prazoStr != null) {
+      try {
+        vencida = DateTime.parse(prazoStr).isBefore(DateTime.now());
+      } catch (_) {}
+    }
+    return NcSummary(
+      id: json['id'] as String,
+      titulo: json['titulo'] as String,
+      status: status,
+      nivelRisco: json['nivelRisco'] as String? ?? 'MEDIO',
+      estabelecimentoNome: json['estabelecimentoNome'] as String? ?? '',
+      dataRegistro: json['dataRegistro'] as String? ?? '',
+      vencida: vencida,
+      responsavelTratativaId: json['responsavelTrativaId'] as String?,
+    );
+  }
 }
