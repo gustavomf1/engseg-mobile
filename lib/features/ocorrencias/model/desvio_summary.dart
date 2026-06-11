@@ -4,6 +4,7 @@ class DesvioSummary {
   final String status;
   final String estabelecimentoNome;
   final String dataRegistro;
+  final String? responsavelTratativaId;
 
   const DesvioSummary({
     required this.id,
@@ -11,6 +12,7 @@ class DesvioSummary {
     required this.status,
     required this.estabelecimentoNome,
     required this.dataRegistro,
+    this.responsavelTratativaId,
   });
 
   factory DesvioSummary.fromJson(Map<String, dynamic> json) => DesvioSummary(
@@ -19,5 +21,6 @@ class DesvioSummary {
     status: json['status'] as String,
     estabelecimentoNome: json['estabelecimentoNome'] as String? ?? '',
     dataRegistro: json['dataRegistro'] as String? ?? '',
+    responsavelTratativaId: json['responsavelTratativaId'] as String?,
   );
 }
