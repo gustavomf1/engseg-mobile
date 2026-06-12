@@ -126,7 +126,7 @@ class _RevisarTratativasSectionState
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: () {},
+              onPressed: _confirmar,
               child: Text(
                 _algumaMarcada
                     ? 'Reprovar $marcadas tratativa(s)'
@@ -278,4 +278,33 @@ class _RevisarTratativasSectionState
         color: ProtoColors.surface2,
         child: const Icon(Icons.image_outlined, color: ProtoColors.muted),
       );
+
+  Future<void> _confirmar() async {
+    if (_algumaMarcada) {
+      final itens = <ItemReprovacao>[];
+      for (final t in _pendentes) {
+        if (_reprovarMarcado[t.id] != true) continue;
+        final motivo = _motivoControllers[t.id]!.text.trim();
+        if (motivo.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Preencha o motivo de todas as tratativas marcadas para reprovação.'),
+            backgroundColor: ProtoColors.red,
+          ));
+          return;
+        }
+        itens.add(ItemReprovacao(trativaId: t.id, motivo: motivo));
+      }
+      await widget.runAction(() => ref
+          .read(desvioRepositoryProvider)
+          .reprovar(widget.d.id, ReprovarTrativasDesvioRequest(itens: itens)));
+    } else {
+      final comentario = _comentarioController.text.trim();
+      await widget.runAction(() => ref.read(desvioRepositoryProvider).aprovar(
+            widget.d.id,
+            AprovarDesvioRequest(
+                comentario: comentario.isEmpty ? null : comentario),
+          ));
+    }
+  }
 }
