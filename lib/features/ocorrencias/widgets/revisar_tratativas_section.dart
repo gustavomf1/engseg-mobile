@@ -71,7 +71,7 @@ class _RevisarTratativasSectionState
           const ProtoSectionTitle('Revisar Tratativas'),
           const SizedBox(height: 4),
           const Text(
-            'Marque as que devem ser reprovadas e informe o motivo',
+            'Aprove ou reprove cada item. Reprovações exigem motivo.',
             style: TextStyle(color: ProtoColors.muted, fontSize: 12),
           ),
           const SizedBox(height: 14),
