@@ -24,6 +24,10 @@ class Plano {
   });
 }
 
+/// Assume que `historico` é um log cronológico em que cada rodada gera no
+/// máximo uma entrada `TRATATIVA_SUBMETIDA` e, depois, no máximo uma entrada
+/// de resultado (`APROVADO`/`REPROVADO`) — por isso o pareamento por índice
+/// entre rodadas ordenadas e entradas filtradas do histórico.
 List<Plano> buildPlanos(
   List<TrativaDesvio> tratativas,
   List<Map<String, dynamic>> historico,
