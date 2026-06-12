@@ -18,6 +18,7 @@ import 'model/evidencia_metadata.dart';
 import 'model/trativa_desvio.dart';
 import 'repository/desvio_repository_impl.dart';
 import 'repository/evidencia_repository_impl.dart';
+import 'widgets/revisar_tratativas_section.dart';
 
 final _jwtTokenProvider = FutureProvider<String?>((ref) async {
   const storage = FlutterSecureStorage();
@@ -602,11 +603,7 @@ class _BodyState extends ConsumerState<_Body> {
       case 'AGUARDANDO_APROVACAO':
         if (!isApprover) return [];
         return [
-          _btn('Aprovar', Icons.check_circle_outline_rounded, ProtoColors.green,
-              () => _run(() => ref.read(desvioRepositoryProvider).aprovar(
-                  d.id, const AprovarDesvioRequest()))),
-          const SizedBox(height: 10),
-          _btn('Reprovar', Icons.cancel_outlined, ProtoColors.red, _openReprovar),
+          RevisarTratativasSection(d: d, token: _token, runAction: _run),
         ];
       default:
         return [];
@@ -678,63 +675,6 @@ class _BodyState extends ConsumerState<_Body> {
     });
   }
 
-  Future<void> _openReprovar() async {
-    final pendentes = d.tratativas
-        .where((t) => t.rodada == d.rodadaAtual && t.status == 'PENDENTE')
-        .toList();
-    final motivos = {for (final t in pendentes) t.id: TextEditingController()};
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: ProtoColors.surface,
-        title: const Text('Reprovar tratativas',
-            style: TextStyle(color: ProtoColors.text)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: pendentes
-                .map((t) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(t.titulo,
-                              style: const TextStyle(
-                                  color: ProtoColors.text, fontSize: 13)),
-                          TextField(
-                            controller: motivos[t.id],
-                            style: const TextStyle(color: ProtoColors.text),
-                            decoration:
-                                const InputDecoration(hintText: 'Motivo'),
-                          ),
-                        ],
-                      ),
-                    ))
-                .toList(),
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Reprovar')),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    final itens = pendentes
-        .map((t) => ItemReprovacao(
-            trativaId: t.id, motivo: motivos[t.id]!.text.trim()))
-        .where((i) => i.motivo.isNotEmpty)
-        .toList();
-    for (final c in motivos.values) c.dispose();
-    if (itens.isEmpty) return;
-    await _run(() => ref
-        .read(desvioRepositoryProvider)
-        .reprovar(d.id, ReprovarTrativasDesvioRequest(itens: itens)));
-  }
 }
 
 class _NovaTratativa {
