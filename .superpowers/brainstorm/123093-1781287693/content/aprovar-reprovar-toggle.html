@@ -1,0 +1,121 @@
+<h2>Revisar Tratativas — botão "Aprovar" / "Reprovar" por item</h2>
+<p class="subtitle">Hoje cada item só tem um checkbox "Reprovar" (deixar sem marcar = aprovado implicitamente). A ideia é deixar a ação explícita com um controle de dois botões. Nenhum item começa selecionado — comportamento de envio não muda, é só visual/clareza.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Pílulas lado a lado (segmented)</h3>
+      <p>Dois botões "Aprovar" / "Reprovar" um ao lado do outro, acima do card. O selecionado fica preenchido (verde ou vermelho); o card ganha a borda correspondente.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Ícones circulares (✓ / ✕)</h3>
+      <p>Dois botões circulares com ícone de check e X, no canto direito do card, no lugar do checkbox atual. O selecionado fica preenchido com a cor.</p>
+    </div>
+  </div>
+</div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">A — Pílulas segmentadas</div>
+    <div class="mockup-body" style="background:#0B1118;padding:14px;display:flex;flex-direction:column;gap:12px;">
+
+      <!-- Item 1: Reprovar selecionado -->
+      <div style="border:1px solid #FF4D4D;background:rgba(255,77,77,.06);border-radius:12px;padding:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <p style="color:#F8FBFF;font-weight:800;font-size:14px;margin:0;">testando 2</p>
+            <p style="color:#9aa6b2;font-size:13px;margin:4px 0 0;">testando 2</p>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <div style="border:1px solid #3FB950;color:#3FB950;font-size:11px;font-weight:900;padding:6px 10px;border-radius:999px;">Aprovar</div>
+            <div style="background:#FF4D4D;color:#fff;font-size:11px;font-weight:900;padding:6px 10px;border-radius:999px;">Reprovar</div>
+          </div>
+        </div>
+        <div style="margin-top:8px;background:#1A2028;border:1px solid #FF4D4D;border-radius:10px;padding:10px;color:#9aa6b2;font-size:12px;">Motivo da reprovação (obrigatório)</div>
+      </div>
+
+      <!-- Item 2: Aprovar selecionado -->
+      <div style="border:1px solid #3FB950;background:rgba(63,185,80,.06);border-radius:12px;padding:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <p style="color:#F8FBFF;font-weight:800;font-size:14px;margin:0;">testando 3</p>
+            <p style="color:#9aa6b2;font-size:13px;margin:4px 0 0;">testando 3</p>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <div style="background:#3FB950;color:#0B1118;font-size:11px;font-weight:900;padding:6px 10px;border-radius:999px;">Aprovar</div>
+            <div style="border:1px solid #FF4D4D;color:#FF4D4D;font-size:11px;font-weight:900;padding:6px 10px;border-radius:999px;">Reprovar</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Item 3: nada selecionado (estado neutro) -->
+      <div style="border:1px solid #26303B;background:#151A21;border-radius:12px;padding:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <p style="color:#F8FBFF;font-weight:800;font-size:14px;margin:0;">testando 4</p>
+            <p style="color:#9aa6b2;font-size:13px;margin:4px 0 0;">testando 4</p>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <div style="border:1px solid #3FB950;color:#3FB950;font-size:11px;font-weight:900;padding:6px 10px;border-radius:999px;">Aprovar</div>
+            <div style="border:1px solid #FF4D4D;color:#FF4D4D;font-size:11px;font-weight:900;padding:6px 10px;border-radius:999px;">Reprovar</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">B — Ícones circulares</div>
+    <div class="mockup-body" style="background:#0B1118;padding:14px;display:flex;flex-direction:column;gap:12px;">
+
+      <!-- Item 1: Reprovar selecionado -->
+      <div style="border:1px solid #FF4D4D;background:rgba(255,77,77,.06);border-radius:12px;padding:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <p style="color:#F8FBFF;font-weight:800;font-size:14px;margin:0;">testando 2</p>
+            <p style="color:#9aa6b2;font-size:13px;margin:4px 0 0;">testando 2</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <div style="width:34px;height:34px;border-radius:999px;border:1px solid #3FB950;color:#3FB950;display:flex;align-items:center;justify-content:center;font-size:16px;">✓</div>
+            <div style="width:34px;height:34px;border-radius:999px;background:#FF4D4D;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;">✕</div>
+          </div>
+        </div>
+        <div style="margin-top:8px;background:#1A2028;border:1px solid #FF4D4D;border-radius:10px;padding:10px;color:#9aa6b2;font-size:12px;">Motivo da reprovação (obrigatório)</div>
+      </div>
+
+      <!-- Item 2: Aprovar selecionado -->
+      <div style="border:1px solid #3FB950;background:rgba(63,185,80,.06);border-radius:12px;padding:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <p style="color:#F8FBFF;font-weight:800;font-size:14px;margin:0;">testando 3</p>
+            <p style="color:#9aa6b2;font-size:13px;margin:4px 0 0;">testando 3</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <div style="width:34px;height:34px;border-radius:999px;background:#3FB950;color:#0B1118;display:flex;align-items:center;justify-content:center;font-size:16px;">✓</div>
+            <div style="width:34px;height:34px;border-radius:999px;border:1px solid #FF4D4D;color:#FF4D4D;display:flex;align-items:center;justify-content:center;font-size:16px;">✕</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Item 3: nada selecionado -->
+      <div style="border:1px solid #26303B;background:#151A21;border-radius:12px;padding:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <p style="color:#F8FBFF;font-weight:800;font-size:14px;margin:0;">testando 4</p>
+            <p style="color:#9aa6b2;font-size:13px;margin:4px 0 0;">testando 4</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <div style="width:34px;height:34px;border-radius:999px;border:1px solid #3FB950;color:#3FB950;display:flex;align-items:center;justify-content:center;font-size:16px;">✓</div>
+            <div style="width:34px;height:34px;border-radius:999px;border:1px solid #FF4D4D;color:#FF4D4D;display:flex;align-items:center;justify-content:center;font-size:16px;">✕</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -95,4 +95,25 @@ void main() {
   test('sem tratativas retorna lista vazia', () {
     expect(buildPlanos(const [], const []), isEmpty);
   });
+
+  test('tratativa pendente com rodada null (ainda não submetida) não entra em nenhum plano', () {
+    final tratativas = [
+      ..._tratativas(),
+      const TrativaDesvio(
+        id: 't-4',
+        titulo: 'Nova tratativa',
+        descricao: 'Ainda em elaboração',
+        status: 'PENDENTE',
+        numero: 4,
+        rodada: null,
+      ),
+    ];
+
+    final planos = buildPlanos(tratativas, _historico());
+
+    expect(planos, hasLength(2));
+    for (final plano in planos) {
+      expect(plano.tratativas.any((t) => t.id == 't-4'), isFalse);
+    }
+  });
 }

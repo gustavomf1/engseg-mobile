@@ -24,7 +24,7 @@ class TrativaDesvio {
   final String status; // PENDENTE | APROVADO | REPROVADO
   final String? motivoReprovacao;
   final int numero;
-  final int rodada;
+  final int? rodada;
   final String? dtCriacao;
   final List<EvidenciaInfo> evidencias;
 
@@ -47,7 +47,7 @@ class TrativaDesvio {
         status: j['status'] as String? ?? 'PENDENTE',
         motivoReprovacao: j['motivoReprovacao'] as String?,
         numero: j['numero'] as int? ?? 0,
-        rodada: j['rodada'] as int? ?? 1,
+        rodada: j['rodada'] as int?,
         dtCriacao: j['dtCriacao'] as String?,
         evidencias: (j['evidencias'] as List<dynamic>? ?? [])
             .map((e) => EvidenciaInfo.fromJson(e as Map<String, dynamic>))

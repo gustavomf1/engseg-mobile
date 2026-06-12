@@ -66,6 +66,11 @@ class DesvioDetail {
             .cast<Map<String, dynamic>>(),
       );
 
-  int get rodadaAtual =>
-      tratativas.isEmpty ? 0 : tratativas.map((t) => t.rodada).reduce((a, b) => a > b ? a : b);
+  int get rodadaAtual {
+    final rodadas = tratativas.map((t) => t.rodada).whereType<int>();
+    return rodadas.isEmpty ? 0 : rodadas.reduce((a, b) => a > b ? a : b);
+  }
+
+  bool get temTratativasPendentesNaoSubmetidas =>
+      tratativas.any((t) => t.rodada == null && t.status == 'PENDENTE');
 }

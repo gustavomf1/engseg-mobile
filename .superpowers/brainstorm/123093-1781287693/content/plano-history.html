@@ -1,0 +1,123 @@
+<h2>Histórico de Submissões ("Planos")</h2>
+<p class="subtitle">Hoje a lista de tratativas é exibida em uma sequência plana, sem indicar qual rodada foi reprovada. Veja duas formas de agrupar por "Plano" no tema escuro do app, com destaque vermelho para a rodada reprovada e opção de recolher.</p>
+
+<div class="options" data-multiselect="false">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Borda lateral colorida (estilo web)</h3>
+      <p>Cada Plano é um card com uma faixa colorida na esquerda (vermelho/verde/azul) indicando o resultado. Cabeçalho com selo de status, clicável para recolher. Só o último Plano vem aberto por padrão.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Card todo tingido (estilo atual dos itens)</h3>
+      <p>O card do Plano reprovado fica com fundo/borda vermelha por inteiro (como os itens individuais já fazem hoje). Cabeçalho com selo de status e chevron para recolher.</p>
+    </div>
+  </div>
+</div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">A — Borda lateral</div>
+    <div class="mockup-body" style="background:#0B1118;padding:0;">
+      <div style="display:flex;flex-direction:column;gap:10px;padding:14px;">
+
+        <!-- Plano 1 - reprovado, expanded -->
+        <div style="border-left:4px solid #FF4D4D;border-radius:10px;background:#151A21;overflow:hidden;border:1px solid #26303B;border-left:4px solid #FF4D4D;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="color:#F8FBFF;font-weight:900;font-size:13px;">Plano 1</span>
+              <span style="color:#566170;font-size:11px;">11/06/2026, 17:47</span>
+              <span style="background:#FF4D4D;color:#fff;font-size:10px;font-weight:900;padding:3px 8px;border-radius:999px;">Reprovado</span>
+            </div>
+            <span style="color:#566170;">▾</span>
+          </div>
+          <div style="padding:0 14px 14px 14px;display:flex;flex-direction:column;gap:8px;">
+            <div style="border:1px solid #FF4D4D;background:rgba(255,77,77,.08);border-radius:10px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:#F8FBFF;font-weight:800;font-size:13px;">1. teste</span>
+                <span style="background:#4A1017;color:#FF4D4D;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px;">Reprovada</span>
+              </div>
+              <p style="color:#9aa6b2;font-size:12px;margin:4px 0 6px;">teste</p>
+              <div style="background:rgba(255,77,77,.15);border-radius:8px;padding:8px;color:#FF4D4D;font-size:11px;font-weight:700;">Motivo: teste</div>
+            </div>
+            <div style="border:1px solid #26303B;background:rgba(63,185,80,.06);border-radius:10px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:#F8FBFF;font-weight:800;font-size:13px;">2. teste 2</span>
+                <span style="background:#0B3A1C;color:#3FB950;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px;">Aprovada</span>
+              </div>
+              <p style="color:#9aa6b2;font-size:12px;margin:4px 0 0;">teste 2</p>
+            </div>
+            <p style="color:#566170;font-size:11px;margin:2px 0 0;">Reprovado por Gustavo França • 12/06/2026, 14:34</p>
+          </div>
+        </div>
+
+        <!-- Plano 2 - em analise, collapsed -->
+        <div style="border-left:4px solid #58A6FF;border-radius:10px;background:#151A21;border:1px solid #26303B;border-left:4px solid #58A6FF;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="color:#F8FBFF;font-weight:900;font-size:13px;">Plano 2</span>
+              <span style="color:#566170;font-size:11px;">12/06/2026, 14:59</span>
+              <span style="background:#58A6FF;color:#0B1118;font-size:10px;font-weight:900;padding:3px 8px;border-radius:999px;">Em análise</span>
+            </div>
+            <span style="color:#566170;">▸</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">B — Card tingido</div>
+    <div class="mockup-body" style="background:#0B1118;padding:0;">
+      <div style="display:flex;flex-direction:column;gap:10px;padding:14px;">
+
+        <!-- Plano 1 - reprovado, expanded, full red tint -->
+        <div style="border-radius:12px;background:rgba(255,77,77,.06);border:1px solid #FF4D4D;overflow:hidden;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="color:#F8FBFF;font-weight:900;font-size:13px;">Plano 1</span>
+              <span style="color:#566170;font-size:11px;">11/06/2026, 17:47</span>
+              <span style="background:#FF4D4D;color:#fff;font-size:10px;font-weight:900;padding:3px 8px;border-radius:999px;">Reprovado</span>
+            </div>
+            <span style="color:#566170;">▾</span>
+          </div>
+          <div style="padding:0 14px 14px 14px;display:flex;flex-direction:column;gap:8px;">
+            <div style="border:1px solid #FF4D4D;background:rgba(255,77,77,.12);border-radius:10px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:#F8FBFF;font-weight:800;font-size:13px;">1. teste</span>
+                <span style="background:#4A1017;color:#FF4D4D;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px;">Reprovada</span>
+              </div>
+              <p style="color:#9aa6b2;font-size:12px;margin:4px 0 6px;">teste</p>
+              <div style="background:rgba(255,77,77,.2);border-radius:8px;padding:8px;color:#FF4D4D;font-size:11px;font-weight:700;">Motivo: teste</div>
+            </div>
+            <div style="border:1px solid #26303B;background:#1A2028;border-radius:10px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:#F8FBFF;font-weight:800;font-size:13px;">2. teste 2</span>
+                <span style="background:#0B3A1C;color:#3FB950;font-size:10px;font-weight:900;padding:2px 8px;border-radius:999px;">Aprovada</span>
+              </div>
+              <p style="color:#9aa6b2;font-size:12px;margin:4px 0 0;">teste 2</p>
+            </div>
+            <p style="color:#FF4D4D;font-size:11px;margin:2px 0 0;font-weight:700;">Reprovado por Gustavo França • 12/06/2026, 14:34</p>
+          </div>
+        </div>
+
+        <!-- Plano 2 - em analise, collapsed -->
+        <div style="border-radius:12px;background:#151A21;border:1px solid #26303B;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="color:#F8FBFF;font-weight:900;font-size:13px;">Plano 2</span>
+              <span style="color:#566170;font-size:11px;">12/06/2026, 14:59</span>
+              <span style="background:#58A6FF;color:#0B1118;font-size:10px;font-weight:900;padding:3px 8px;border-radius:999px;">Em análise</span>
+            </div>
+            <span style="color:#566170;">▸</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>

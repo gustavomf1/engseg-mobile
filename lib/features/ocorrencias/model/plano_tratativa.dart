@@ -34,7 +34,9 @@ List<Plano> buildPlanos(
 ) {
   final byRodada = <int, List<TrativaDesvio>>{};
   for (final t in tratativas) {
-    byRodada.putIfAbsent(t.rodada, () => []).add(t);
+    final rodada = t.rodada;
+    if (rodada == null) continue;
+    byRodada.putIfAbsent(rodada, () => []).add(t);
   }
 
   final submissoes = <Map<String, dynamic>>[];

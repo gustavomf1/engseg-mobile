@@ -19,6 +19,7 @@ import 'repository/desvio_repository_impl.dart';
 import 'repository/evidencia_repository_impl.dart';
 import 'widgets/planos_tratativa_section.dart';
 import 'widgets/revisar_tratativas_section.dart';
+import 'widgets/tratativas_pendentes_section.dart';
 
 final _jwtTokenProvider = FutureProvider<String?>((ref) async {
   const storage = FlutterSecureStorage();
@@ -390,6 +391,7 @@ class _BodyState extends ConsumerState<_Body> {
               const SizedBox(height: 20),
 
               // ── Tratativas ─────────────────────────────────────
+              TratativasPendentesSection(d: d, token: _token),
               PlanosTratativaSection(d: d, token: _token),
 
               const SizedBox(height: 20),
@@ -485,7 +487,7 @@ class _BodyState extends ConsumerState<_Body> {
           _btn('Adicionar tratativa', Icons.add_rounded, ProtoColors.blue,
               _openAddTratativa),
           const SizedBox(height: 10),
-          if (d.tratativas.any((t) => t.rodada == d.rodadaAtual && t.status == 'PENDENTE'))
+          if (d.temTratativasPendentesNaoSubmetidas)
             _btn('Submeter tratativas', Icons.send_rounded, ProtoColors.green,
                 () => _run(() => ref.read(desvioRepositoryProvider).submeterTratativa(
                     d.id, const SubmeterTrativaDesvioRequest()))),
