@@ -67,7 +67,8 @@ void main() {
     expect(find.text('Tratativa 2'), findsOneWidget);
     expect(find.text('Aprovar Todas'), findsOneWidget);
     expect(find.text('Observações sobre a aprovação...'), findsOneWidget);
-    expect(find.byType(Checkbox), findsNWidgets(2));
+    expect(find.text('Aprovar'), findsNWidgets(2));
+    expect(find.text('Reprovar'), findsNWidgets(2));
     expect(find.text('Motivo da reprovação (obrigatório)'), findsNothing);
   });
 
@@ -79,7 +80,7 @@ void main() {
       runAction: (action) => action(),
     )));
 
-    await tester.tap(find.byType(Checkbox).first);
+    await tester.tap(find.text('Reprovar').first);
     await tester.pump();
 
     expect(find.text('Motivo da reprovação (obrigatório)'), findsOneWidget);
@@ -103,7 +104,7 @@ void main() {
       repo,
     ));
 
-    await tester.tap(find.byType(Checkbox).first);
+    await tester.tap(find.text('Reprovar').first);
     await tester.pump();
 
     await tester.tap(find.text('Reprovar 1 tratativa(s)'));
@@ -132,7 +133,7 @@ void main() {
       repo,
     ));
 
-    await tester.tap(find.byType(Checkbox).first);
+    await tester.tap(find.text('Reprovar').first);
     await tester.pump();
 
     await tester.enterText(find.byType(TextField), 'Faltou anexar o laudo');
@@ -168,5 +169,27 @@ void main() {
     final captured = verify(() => repo.aprovar('d-1', captureAny())).captured;
     final request = captured.single as AprovarDesvioRequest;
     expect(request.toJson()['comentario'], 'Tudo certo, parabéns');
+  });
+
+  testWidgets(
+      'alternar de Reprovar para Aprovar no mesmo item volta ao estado neutro',
+      (tester) async {
+    await tester.pumpWidget(_wrap(RevisarTratativasSection(
+      d: _buildDesvio(),
+      token: null,
+      runAction: (action) => action(),
+    )));
+
+    await tester.tap(find.text('Reprovar').first);
+    await tester.pump();
+
+    expect(find.text('Motivo da reprovação (obrigatório)'), findsOneWidget);
+    expect(find.text('Reprovar 1 tratativa(s)'), findsOneWidget);
+
+    await tester.tap(find.text('Aprovar').first);
+    await tester.pump();
+
+    expect(find.text('Motivo da reprovação (obrigatório)'), findsNothing);
+    expect(find.text('Aprovar Todas'), findsOneWidget);
   });
 }
