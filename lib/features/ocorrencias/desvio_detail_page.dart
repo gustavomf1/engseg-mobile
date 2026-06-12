@@ -15,9 +15,9 @@ import '../auth/provider/auth_provider.dart';
 import 'model/desvio_action_requests.dart';
 import 'model/desvio_detail.dart';
 import 'model/evidencia_metadata.dart';
-import 'model/trativa_desvio.dart';
 import 'repository/desvio_repository_impl.dart';
 import 'repository/evidencia_repository_impl.dart';
+import 'widgets/planos_tratativa_section.dart';
 import 'widgets/revisar_tratativas_section.dart';
 
 final _jwtTokenProvider = FutureProvider<String?>((ref) async {
@@ -390,7 +390,7 @@ class _BodyState extends ConsumerState<_Body> {
               const SizedBox(height: 20),
 
               // ── Tratativas ─────────────────────────────────────
-              _tratativasSection(),
+              PlanosTratativaSection(d: d, token: _token),
 
               const SizedBox(height: 20),
 
@@ -465,116 +465,6 @@ class _BodyState extends ConsumerState<_Body> {
                     fontWeight: FontWeight.w900)),
           ],
         ),
-      );
-
-  Widget _tratativasSection() {
-    if (d.tratativas.isEmpty) {
-      return ProtoCard(
-        child: Row(children: [
-          const Icon(Icons.inbox_outlined, color: ProtoColors.muted, size: 18),
-          const SizedBox(width: 10),
-          const Text('Nenhuma tratativa ainda',
-              style: TextStyle(color: ProtoColors.muted, fontSize: 13)),
-        ]),
-      );
-    }
-    final byRodada = <int, List<TrativaDesvio>>{};
-    for (final t in d.tratativas) {
-      byRodada.putIfAbsent(t.rodada, () => []).add(t);
-    }
-    final rodadas = byRodada.keys.toList()..sort((a, b) => b.compareTo(a));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionLabel('Tratativas'),
-        const SizedBox(height: 8),
-        ...rodadas.map((r) => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Text('Rodada $r',
-                      style: const TextStyle(
-                          color: ProtoColors.muted,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900)),
-                ),
-                ...byRodada[r]!.map(_tratativaCard),
-                const SizedBox(height: 8),
-              ],
-            )),
-      ],
-    );
-  }
-
-  Widget _tratativaCard(TrativaDesvio t) {
-    final (bg, fg) = switch (t.status) {
-      'APROVADO' => (const Color(0xFF0B3A1C), ProtoColors.green),
-      'REPROVADO' => (const Color(0xFF4A1017), ProtoColors.red),
-      _ => (ProtoColors.surface2, ProtoColors.blue),
-    };
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: ProtoCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Expanded(
-                child: Text(t.titulo,
-                    style: const TextStyle(
-                        color: ProtoColors.text,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800)),
-              ),
-              ProtoPill(label: t.status, bg: bg, fg: fg),
-            ]),
-            const SizedBox(height: 6),
-            Text(t.descricao,
-                style: const TextStyle(
-                    color: ProtoColors.muted, fontSize: 13)),
-            if (t.motivoReprovacao != null && t.motivoReprovacao!.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text('Motivo: ${t.motivoReprovacao}',
-                  style: const TextStyle(color: ProtoColors.red, fontSize: 12)),
-            ],
-            if (t.evidencias.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 64,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: t.evidencias.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 6),
-                  itemBuilder: (_, i) {
-                    final url = t.evidencias[i].url;
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: url != null
-                          ? Image(
-                              image: NetworkImage(url,
-                                  headers: _token != null
-                                      ? {'Authorization': 'Bearer $_token'}
-                                      : {}),
-                              width: 64, height: 64, fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _thumbFallback())
-                          : _thumbFallback(),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _thumbFallback() => Container(
-        width: 64,
-        height: 64,
-        color: ProtoColors.surface2,
-        child: const Icon(Icons.image_outlined, color: ProtoColors.muted),
       );
 
   List<Widget> _actions({
