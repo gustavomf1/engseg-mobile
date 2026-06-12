@@ -31,7 +31,7 @@ class RevisarTratativasSection extends ConsumerStatefulWidget {
 class _RevisarTratativasSectionState
     extends ConsumerState<RevisarTratativasSection> {
   late final List<TrativaDesvio> _pendentes;
-  late final Map<String, bool> _reprovarMarcado;
+  late final Map<String, bool?> _decisao;
   late final Map<String, TextEditingController> _motivoControllers;
   late final TextEditingController _comentarioController;
 
@@ -42,7 +42,7 @@ class _RevisarTratativasSectionState
         .where((t) =>
             t.rodada == widget.d.rodadaAtual && t.status == 'PENDENTE')
         .toList();
-    _reprovarMarcado = {for (final t in _pendentes) t.id: false};
+    _decisao = {for (final t in _pendentes) t.id: null};
     _motivoControllers = {
       for (final t in _pendentes) t.id: TextEditingController(),
     };
@@ -58,11 +58,11 @@ class _RevisarTratativasSectionState
     super.dispose();
   }
 
-  bool get _algumaMarcada => _reprovarMarcado.values.any((v) => v);
+  bool get _algumaMarcada => _decisao.values.any((v) => v == true);
 
   @override
   Widget build(BuildContext context) {
-    final marcadas = _reprovarMarcado.values.where((v) => v).length;
+    final marcadas = _decisao.values.where((v) => v == true).length;
     return ProtoCard(
       border: Border.all(color: ProtoColors.blue, width: 2),
       child: Column(
@@ -144,12 +144,16 @@ class _RevisarTratativasSectionState
   }
 
   Widget _itemCard(TrativaDesvio t) {
-    final marcado = _reprovarMarcado[t.id] ?? false;
+    final decisao = _decisao[t.id];
+    final borderColor = switch (decisao) {
+      true => ProtoColors.red,
+      false => ProtoColors.green,
+      null => ProtoColors.border,
+    };
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: ProtoCard(
-        border:
-            Border.all(color: marcado ? ProtoColors.red : ProtoColors.border),
+        border: Border.all(color: borderColor),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -216,28 +220,31 @@ class _RevisarTratativasSectionState
                   ),
                 ),
                 const SizedBox(width: 8),
-                Column(
+                Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Checkbox(
-                      value: marcado,
-                      activeColor: ProtoColors.red,
-                      onChanged: (v) => setState(
-                          () => _reprovarMarcado[t.id] = v ?? false),
+                    _decisaoPill(
+                      label: 'Aprovar',
+                      color: ProtoColors.green,
+                      selectedFg: ProtoColors.bg,
+                      selecionado: decisao == false,
+                      onTap: () => setState(
+                          () => _decisao[t.id] = decisao == false ? null : false),
                     ),
-                    const Text(
-                      'Reprovar',
-                      style: TextStyle(
-                        color: ProtoColors.red,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    const SizedBox(width: 6),
+                    _decisaoPill(
+                      label: 'Reprovar',
+                      color: ProtoColors.red,
+                      selectedFg: Colors.white,
+                      selecionado: decisao == true,
+                      onTap: () => setState(
+                          () => _decisao[t.id] = decisao == true ? null : true),
                     ),
                   ],
                 ),
               ],
             ),
-            if (marcado) ...[
+            if (decisao == true) ...[
               const SizedBox(height: 8),
               TextField(
                 controller: _motivoControllers[t.id],
@@ -272,6 +279,34 @@ class _RevisarTratativasSectionState
     );
   }
 
+  Widget _decisaoPill({
+    required String label,
+    required Color color,
+    required Color selectedFg,
+    required bool selecionado,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selecionado ? color : Colors.transparent,
+          border: Border.all(color: color),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selecionado ? selectedFg : color,
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _thumbFallback() => Container(
         width: 56,
         height: 56,
@@ -283,7 +318,7 @@ class _RevisarTratativasSectionState
     if (_algumaMarcada) {
       final itens = <ItemReprovacao>[];
       for (final t in _pendentes) {
-        if (_reprovarMarcado[t.id] != true) continue;
+        if (_decisao[t.id] != true) continue;
         final motivo = _motivoControllers[t.id]!.text.trim();
         if (motivo.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
