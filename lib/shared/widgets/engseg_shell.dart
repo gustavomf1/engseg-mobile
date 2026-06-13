@@ -1,33 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/provider/auth_provider.dart';
 import 'prototype_ui.dart';
 
-class EngSegShell extends StatelessWidget {
+class EngSegShell extends ConsumerWidget {
   final Widget child;
 
   const EngSegShell({super.key, required this.child});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final perfil = ref.watch(authProvider).valueOrNull?.perfil;
+    final isExterno = perfil == 'EXTERNO';
     return Scaffold(
       backgroundColor: ProtoColors.bg,
       body: child,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: Container(
-        width: 62,
-        height: 62,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: ProtoColors.purple,
-          border: Border.all(color: ProtoColors.blue, width: 2),
-          boxShadow: [BoxShadow(color: ProtoColors.blue.withValues(alpha: .35), blurRadius: 16, spreadRadius: 2)],
-        ),
-        child: IconButton(
-          onPressed: () => _showChooseTipo(context),
-          icon: const Icon(Icons.add_rounded, color: Colors.white, size: 31),
-        ),
-      ),
+      floatingActionButtonLocation: isExterno ? null : FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: isExterno
+          ? null
+          : Container(
+              width: 62,
+              height: 62,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: ProtoColors.purple,
+                border: Border.all(color: ProtoColors.blue, width: 2),
+                boxShadow: [BoxShadow(color: ProtoColors.blue.withValues(alpha: .35), blurRadius: 16, spreadRadius: 2)],
+              ),
+              child: IconButton(
+                onPressed: () => _showChooseTipo(context),
+                icon: const Icon(Icons.add_rounded, color: Colors.white, size: 31),
+              ),
+            ),
       bottomNavigationBar: Container(
         height: 84,
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 18),
