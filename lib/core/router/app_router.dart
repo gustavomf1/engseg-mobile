@@ -17,6 +17,7 @@ import '../../features/profile/profile_page.dart';
 import '../../features/wizard/wizard_page.dart';
 import '../../shared/widgets/engseg_shell.dart';
 import 'navigator_key.dart';
+import 'route_guards.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -41,6 +42,10 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final perfil = authState.valueOrNull?.perfil;
       if (state.matchedLocation == '/dashboard' && perfil != 'ENGENHEIRO') {
+        return '/feed';
+      }
+
+      if (perfil == 'EXTERNO' && isExternoBlockedRoute(state.matchedLocation)) {
         return '/feed';
       }
 
