@@ -229,7 +229,9 @@ class _BodyState extends ConsumerState<_Body> {
       padding: EdgeInsets.zero,
       children: [
         // ── Cabeçalho ──────────────────────────────────────────────
-        Container(
+        Hero(
+          tag: 'cover-${d.id}',
+          child: Container(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
           decoration: const BoxDecoration(
             color: ProtoColors.surface,
@@ -282,6 +284,7 @@ class _BodyState extends ConsumerState<_Body> {
                 ),
               ]),
             ],
+          ),
           ),
         ),
 
