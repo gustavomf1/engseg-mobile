@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../shared/data/mock_data.dart';
-import '../../shared/widgets/prototype_ui.dart';
+import '../../core/config/app_config.dart';
+import '../../shared/theme/tokens.dart';
+import '../../shared/widgets/eng_cover_card.dart';
+import '../../shared/widgets/eng_pill.dart';
+import '../../shared/widgets/eng_skeleton.dart';
+import '../../shared/widgets/motion_helpers.dart';
+import '../../shared/widgets/status_color_helper.dart';
 import '../auth/provider/auth_provider.dart';
-import 'model/nc_summary.dart';
-import 'repository/nc_repository_impl.dart';
+import 'model/ocorrencia_summary.dart';
+import 'repository/ocorrencias_repository_impl.dart';
 
 class FeedPage extends ConsumerStatefulWidget {
   const FeedPage({super.key});
@@ -16,7 +21,9 @@ class FeedPage extends ConsumerStatefulWidget {
 }
 
 class _FeedPageState extends ConsumerState<FeedPage> {
-  String filter = 'todas';
+  String _filter = 'todas';
+
+  void _setFilter(String v) => setState(() => _filter = v);
 
   @override
   Widget build(BuildContext context) {
@@ -24,206 +31,184 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final isExterno = session?.perfil == 'EXTERNO';
     final workspace = ref.watch(workspaceProvider);
     final workspaceId = workspace?.estabelecimento.id;
-    final ncsAsync = (isExterno || workspaceId != null)
-        ? ref.watch(ncListProvider(isExterno ? null : workspaceId)).whenData(
-              (ncs) => isExterno
-                  ? ncs.where((nc) => nc.responsavelTratativaId == session?.id).toList()
-                  : ncs,
-            )
-        : const AsyncData<List<NcSummary>>([]);
 
-    final providerKey = isExterno ? null : workspaceId;
+    final (String?, String?) providerKey = isExterno
+        ? (null, 'RESPONSAVEL_TRATATIVA_NC')
+        : (workspaceId, null);
+
+    final ncsAsync = (isExterno || workspaceId != null)
+        ? ref.watch(ocorrenciasProvider(providerKey)).whenData(
+              (list) => list.where((o) => o.isNc).toList(),
+            )
+        : const AsyncData<List<OcorrenciaSummary>>([]);
 
     return Scaffold(
-      backgroundColor: ProtoColors.bg,
+      backgroundColor: EngSegColors.dark.bgBase,
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          color: ProtoColors.blue,
-          backgroundColor: const Color(0xFF1A2233),
+          color: EngSegColors.dark.accent,
+          backgroundColor: EngSegColors.dark.bgElevated,
           onRefresh: () async {
-            ref.invalidate(ncListProvider(providerKey));
-            await ref.read(ncListProvider(providerKey).future).catchError((_) => <NcSummary>[]);
+            ref.invalidate(ocorrenciasProvider(providerKey));
+            await ref
+                .read(ocorrenciasProvider(providerKey).future)
+                .catchError((_) => <OcorrenciaSummary>[]);
           },
           child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 104),
-          children: [
-            ncsAsync.when(
-              loading: () => Row(
-                children: [
-                  _FilterChip(label: 'Todas', value: 'todas', count: 0, active: filter == 'todas', onTap: _setFilter),
-                ],
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 104),
+            children: [
+              ncsAsync.when(
+                loading: () => _filterRow([], 0, 0, 0, 0),
+                error: (_, __) => _filterRow([], 0, 0, 0, 0),
+                data: (ncs) {
+                  final todas = ncs.length;
+                  final abertas =
+                      ncs.where((n) => n.status == 'ABERTA').length;
+                  final vencidas = ncs.where((n) => n.vencida).length;
+                  final concluidas = ncs
+                      .where((n) =>
+                          n.status == 'CONCLUIDA' || n.status == 'FECHADA')
+                      .length;
+                  return _filterRow(ncs, todas, abertas, vencidas, concluidas);
+                },
               ),
-              error: (_, __) => Row(
-                children: [
-                  _FilterChip(label: 'Todas', value: 'todas', count: 0, active: filter == 'todas', onTap: _setFilter),
-                ],
-              ),
-              data: (ncs) {
-                final todas = ncs.length;
-                final abertas = ncs.where((n) => n.status == 'ABERTA').length;
-                final vencidas = ncs.where((n) => n.vencida).length;
-                final concluidas = ncs.where((n) => n.status == 'CONCLUIDA' || n.status == 'FECHADA').length;
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _FilterChip(label: 'Todas', value: 'todas', count: todas, active: filter == 'todas', onTap: _setFilter),
-                      _FilterChip(label: 'Abertas', value: 'abertas', count: abertas, active: filter == 'abertas', onTap: _setFilter),
-                      _FilterChip(label: 'Vencidas', value: 'vencidas', count: vencidas, active: filter == 'vencidas', onTap: _setFilter),
-                      _FilterChip(label: 'Concluídas', value: 'concluidas', count: concluidas, active: filter == 'concluidas', onTap: _setFilter),
-                    ],
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            ncsAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(
-                child: Text(
-                  'Erro ao carregar: $e',
-                  style: const TextStyle(color: ProtoColors.red, fontSize: 13),
+              const SizedBox(height: 12),
+              ncsAsync.when(
+                loading: () => Column(
+                  children:
+                      List.generate(3, (_) => const CoverCardSkeleton()),
                 ),
-              ),
-              data: (ncs) {
-                final list = ncs.where((nc) {
-                  return switch (filter) {
-                    'abertas' => nc.status == 'ABERTA',
-                    'vencidas' => nc.vencida,
-                    'concluidas' => nc.status == 'CONCLUIDA' || nc.status == 'FECHADA',
-                    _ => true,
-                  };
-                }).toList();
-                if (list.isEmpty) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32),
-                      child: Text(
-                        'Nenhuma NC encontrada',
-                        style: TextStyle(color: ProtoColors.muted, fontSize: 13),
-                      ),
-                    ),
+                error: (e, _) => _ErrorState(message: '$e'),
+                data: (ncs) {
+                  final filtered = _applyFilter(ncs);
+                  if (filtered.isEmpty) {
+                    return const _EmptyState(message: 'Nenhuma NC encontrada');
+                  }
+                  return Column(
+                    children: [
+                      for (var i = 0; i < filtered.length; i++)
+                        _buildCard(filtered[i]).staggered(i),
+                    ],
                   );
-                }
-                return Column(
-                  children: list.map((nc) => _NcCard(nc: nc)).toList(),
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            const Center(child: Text('fim da lista', style: TextStyle(color: ProtoColors.muted2, fontSize: 11))),
-          ],
-        ),
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _setFilter(String value) => setState(() => filter = value);
+  List<OcorrenciaSummary> _applyFilter(List<OcorrenciaSummary> ncs) {
+    return switch (_filter) {
+      'abertas' => ncs.where((n) => n.status == 'ABERTA').toList(),
+      'vencidas' => ncs.where((n) => n.vencida).toList(),
+      'concluidas' => ncs
+          .where((n) => n.status == 'CONCLUIDA' || n.status == 'FECHADA')
+          .toList(),
+      _ => ncs,
+    };
+  }
+
+  Widget _buildCard(OcorrenciaSummary nc) {
+    final ncColors = StatusColorHelper.ncColors(nc.status, vencida: nc.vencida);
+    final coverUrl = nc.primeiraEvidenciaId != null
+        ? '${AppConfig.apiBaseUrl}/api/evidencias/${nc.primeiraEvidenciaId}/download'
+        : null;
+
+    return EngCoverCard(
+      id: nc.id,
+      titulo: nc.titulo,
+      coverUrl: coverUrl,
+      hasImageCover: nc.hasImageCover,
+      hasAnyCover: nc.hasAnyCover,
+      pills: [
+        const EngPill(
+          label: 'NC',
+          bg: Color(0xFF4A1017),
+          fg: Color(0xFFFF4D4D),
+        ),
+        EngPill(
+          label: StatusColorHelper.ncLabel(nc.status),
+          bg: ncColors.bg,
+          fg: ncColors.fg,
+        ),
+        if (nc.vencida)
+          const EngPill(
+            label: 'Vencida',
+            bg: Color(0xFF4A1017),
+            fg: Color(0xFFFF4D4D),
+          ),
+      ],
+      meta: '${nc.estabelecimentoNome} · ${nc.nivelRisco ?? ''}',
+      onTap: () => context.push('/oc/${nc.id}'),
+    );
+  }
+
+  Widget _filterRow(List<OcorrenciaSummary> ncs, int todas, int abertas,
+      int vencidas, int concluidas) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _Chip(label: 'Todas', value: 'todas', count: todas, active: _filter == 'todas', onTap: _setFilter),
+          _Chip(label: 'Abertas', value: 'abertas', count: abertas, active: _filter == 'abertas', onTap: _setFilter),
+          _Chip(label: 'Vencidas', value: 'vencidas', count: vencidas, active: _filter == 'vencidas', onTap: _setFilter),
+          _Chip(label: 'Concluídas', value: 'concluidas', count: concluidas, active: _filter == 'concluidas', onTap: _setFilter),
+        ],
+      ),
+    );
+  }
 }
 
-
-class _FilterChip extends StatelessWidget {
+class _Chip extends StatelessWidget {
   final String label;
   final String value;
   final int count;
   final bool active;
-  final ValueChanged<String> onTap;
+  final void Function(String) onTap;
 
-  const _FilterChip({required this.label, required this.value, required this.count, required this.active, required this.onTap});
+  const _Chip({required this.label, required this.value, required this.count, required this.active, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: InkWell(
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(EngSegRadius.pill),
         onTap: () => onTap(value),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
+          duration: EngSegMotion.fast,
           height: 34,
           padding: const EdgeInsets.symmetric(horizontal: 15),
-          decoration: BoxDecoration(color: active ? const Color(0xFFEAF2FA) : ProtoColors.surface, borderRadius: BorderRadius.circular(999), border: Border.all(color: ProtoColors.border)),
+          decoration: BoxDecoration(
+            color: active ? EngSegColors.dark.accent.withValues(alpha: 0.15) : EngSegColors.dark.bgSurface,
+            borderRadius: BorderRadius.circular(EngSegRadius.pill),
+            border: Border.all(
+              color: active ? EngSegColors.dark.accent : EngSegColors.dark.borderSoft,
+            ),
+          ),
           child: Row(
             children: [
-              Text(label, style: TextStyle(color: active ? ProtoColors.bg : ProtoColors.muted, fontSize: 12, fontWeight: FontWeight.w900)),
-              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: active ? EngSegColors.dark.accent : EngSegColors.dark.fg2,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: active ? Colors.white.withValues(alpha: .5) : ProtoColors.surface2, borderRadius: BorderRadius.circular(99)),
-                child: Text('$count', style: TextStyle(color: active ? ProtoColors.text : ProtoColors.muted, fontSize: 10, fontWeight: FontWeight.w900)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NcCard extends StatelessWidget {
-  final NcSummary nc;
-
-  const _NcCard({required this.nc});
-
-  @override
-  Widget build(BuildContext context) {
-    final isRed = nc.vencida || nc.nivelRisco == 'CRITICO' || nc.nivelRisco == 'ALTO';
-    final color = isRed ? ProtoColors.red : ProtoColors.yellow;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => context.push('/oc/${nc.id}'),
-        child: ProtoCard(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(color: color.withValues(alpha: .16), borderRadius: BorderRadius.circular(14)),
-                    child: Icon(Icons.shield_outlined, color: color, size: 28),
-                  ),
-                  Positioned(
-                    right: -2,
-                    bottom: -2,
-                    child: Container(width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        const ProtoPill(label: 'NC', bg: Color(0xFF4A1017), fg: ProtoColors.red),
-                        ProtoPill(
-                          label: statusLabel[nc.status] ?? nc.status,
-                          bg: _statusBg(),
-                          fg: _statusFg(),
-                        ),
-                        if (nc.vencida)
-                          const ProtoPill(label: 'Vencida', bg: Color(0xFF4A1017), fg: ProtoColors.red),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(nc.titulo, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: ProtoColors.text, fontSize: 15, height: 1.18, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 7),
-                    _MetaLine(icon: Icons.tag_rounded, label: nc.id, secondIcon: Icons.place_outlined, second: nc.estabelecimentoNome),
-                    const SizedBox(height: 5),
-                    _MetaLine(icon: Icons.schedule_rounded, label: nc.dataRegistro, secondIcon: Icons.bar_chart_rounded, second: nc.nivelRisco),
-                  ],
+                decoration: BoxDecoration(
+                  color: EngSegColors.dark.bgElevated,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(color: EngSegColors.dark.fg2, fontSize: 10, fontWeight: FontWeight.w700),
                 ),
               ),
             ],
@@ -232,42 +217,44 @@ class _NcCard extends StatelessWidget {
       ),
     );
   }
-
-  Color _statusBg() {
-    if (nc.vencida) return const Color(0xFF4A1017);
-    if (nc.status == 'CONCLUIDA' || nc.status == 'FECHADA') return const Color(0xFF0B3A1C);
-    if (nc.status == 'EM_EXECUCAO') return const Color(0xFF2A164A);
-    return const Color(0xFF4A390A);
-  }
-
-  Color _statusFg() {
-    if (nc.vencida) return ProtoColors.red;
-    if (nc.status == 'CONCLUIDA' || nc.status == 'FECHADA') return ProtoColors.green;
-    if (nc.status == 'EM_EXECUCAO') return const Color(0xFFD2A8FF);
-    return ProtoColors.yellow;
-  }
 }
 
-class _MetaLine extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final IconData secondIcon;
-  final String second;
-
-  const _MetaLine({required this.icon, required this.label, required this.secondIcon, required this.second});
+class _EmptyState extends StatelessWidget {
+  final String message;
+  const _EmptyState({required this.message});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 11, color: ProtoColors.muted2),
-        const SizedBox(width: 3),
-        Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: ProtoColors.muted, fontSize: 11, fontWeight: FontWeight.w700))),
-        const SizedBox(width: 9),
-        Icon(secondIcon, size: 11, color: ProtoColors.muted2),
-        const SizedBox(width: 3),
-        Flexible(child: Text(second, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: ProtoColors.muted, fontSize: 11, fontWeight: FontWeight.w700))),
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(top: 80),
+      child: Column(
+        children: [
+          Icon(Icons.inbox_outlined, size: 48, color: EngSegColors.dark.fg3),
+          const SizedBox(height: 12),
+          Text(message, style: TextStyle(color: EngSegColors.dark.fg2, fontSize: 14)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  const _ErrorState({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 80),
+      child: Column(
+        children: [
+          Icon(Icons.error_outline, size: 48, color: EngSegColors.dark.statusRedFg),
+          const SizedBox(height: 12),
+          Text('Erro ao carregar', style: TextStyle(color: EngSegColors.dark.statusRedFg, fontSize: 14)),
+          const SizedBox(height: 4),
+          Text(message, style: TextStyle(color: EngSegColors.dark.fg3, fontSize: 12)),
+        ],
+      ),
     );
   }
 }
