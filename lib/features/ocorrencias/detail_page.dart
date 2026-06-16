@@ -121,7 +121,10 @@ class DetailPage extends ConsumerWidget {
               bottom: false,
               child: Column(
                 children: [
-                  _DetailHero(nc: nc, tone: tone),
+                  Hero(
+                    tag: 'cover-${nc.id}',
+                    child: _DetailHero(nc: nc, tone: tone),
+                  ),
                   _DetailTabs(),
                   Expanded(
                     child: TabBarView(

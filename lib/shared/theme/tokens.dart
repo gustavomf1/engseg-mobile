@@ -92,36 +92,36 @@ class EngSegColors extends ThemeExtension<EngSegColors> {
   );
 
   static const dark = EngSegColors(
-    bgBase: Color(0xFF0D1117),
-    bgSurface: Color(0xFF161B22),
-    bgElevated: Color(0xFF1C2128),
-    bgMuted: Color(0xFF21262D),
-    borderSoft: Color(0xFF21262D),
-    borderMain: Color(0xFF30363D),
-    fg0: Color(0xFFE6EDF3),
-    fg1: Color(0xFFC9D1D9),
-    fg2: Color(0xFF8B949E),
-    fg3: Color(0xFF484F58),
-    accent: Color(0xFF58A6FF),
-    accentHover: Color(0xFF79B8FF),
-    statusGreenBg: Color(0xFF0D2B1A),
-    statusGreenFg: Color(0xFF3FB950),
-    statusYellowBg: Color(0xFF2B1E00),
-    statusYellowFg: Color(0xFFD29922),
-    statusRedBg: Color(0xFF2D1218),
-    statusRedFg: Color(0xFFF85149),
-    statusBlueBg: Color(0xFF0D1F36),
+    bgBase: Color(0xFF0B1118),        // ProtoColors.bg
+    bgSurface: Color(0xFF151A21),     // ProtoColors.surface
+    bgElevated: Color(0xFF1A2028),    // ProtoColors.surface2
+    bgMuted: Color(0xFF1A2534),       // ProtoColors.hero
+    borderSoft: Color(0xFF26303B),    // ProtoColors.border
+    borderMain: Color(0xFF748195),    // ProtoColors.borderStrong
+    fg0: Color(0xFFF8FBFF),           // ProtoColors.text
+    fg1: Color(0xFFBCC5D0),
+    fg2: Color(0xFF566170),           // ProtoColors.muted
+    fg3: Color(0xFF3F4A57),           // ProtoColors.muted2
+    accent: Color(0xFF58A6FF),        // ProtoColors.blue
+    accentHover: Color(0xFF88BFFF),
+    statusGreenBg: Color(0xFF0B3A1C),
+    statusGreenFg: Color(0xFF3FB950), // ProtoColors.green
+    statusYellowBg: Color(0xFF4A390A),
+    statusYellowFg: Color(0xFFD29922), // ProtoColors.yellow
+    statusRedBg: Color(0xFF4A1017),
+    statusRedFg: Color(0xFFFF4D4D),   // ProtoColors.red
+    statusBlueBg: Color(0xFF0B2A3A),
     statusBlueFg: Color(0xFF58A6FF),
-    statusIndigoBg: Color(0xFF101840),
-    statusIndigoFg: Color(0xFF79B8FF),
+    statusIndigoBg: Color(0xFF2A164A),
+    statusIndigoFg: Color(0xFF5F3FF2), // ProtoColors.purple
     statusPurpleBg: Color(0xFF1F1040),
-    statusPurpleFg: Color(0xFFD2A8FF),
+    statusPurpleFg: Color(0xFF5F3FF2),
     statusOrangeBg: Color(0xFF2B1800),
-    statusOrangeFg: Color(0xFFE3B341),
+    statusOrangeFg: Color(0xFFFF7A1A), // ProtoColors.orange
     sevBaixo: Color(0xFF3FB950),
     sevMedio: Color(0xFFD29922),
     sevAlto: Color(0xFFF97316),
-    sevCritico: Color(0xFFF85149),
+    sevCritico: Color(0xFFFF4D4D),
   );
 
   @override
@@ -158,6 +158,13 @@ extension EngSegTheme on BuildContext {
 
 ThemeData engSegThemeLight() => _theme(EngSegColors.light, Brightness.light);
 ThemeData engSegThemeDark() => _theme(EngSegColors.dark, Brightness.dark);
+
+class EngSegMotion {
+  static const fast = Duration(milliseconds: 180);
+  static const base = Duration(milliseconds: 240);
+  static const standard = Duration(milliseconds: 300);
+  static const curve = Curves.easeOutCubic;
+}
 
 ThemeData _theme(EngSegColors c, Brightness brightness) {
   final isDark = brightness == Brightness.dark;
