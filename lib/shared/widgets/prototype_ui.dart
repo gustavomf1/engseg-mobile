@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+// ignore_for_file: deprecated_member_use_from_same_package
+@Deprecated('Use context.c (EngSegColors) em novo código.')
 class ProtoColors {
   static const bg = Color(0xFF0B1118);
   static const hero = Color(0xFF1A2534);
