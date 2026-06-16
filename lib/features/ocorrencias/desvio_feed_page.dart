@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../shared/data/mock_data.dart';
-import '../../shared/widgets/prototype_ui.dart';
+import '../../core/config/app_config.dart';
+import '../../shared/theme/tokens.dart';
+import '../../shared/widgets/eng_cover_card.dart';
+import '../../shared/widgets/eng_pill.dart';
+import '../../shared/widgets/eng_skeleton.dart';
+import '../../shared/widgets/motion_helpers.dart';
+import '../../shared/widgets/status_color_helper.dart';
 import '../auth/provider/auth_provider.dart';
-import 'model/desvio_summary.dart';
-import 'repository/desvio_repository_impl.dart';
+import 'model/ocorrencia_summary.dart';
+import 'repository/ocorrencias_repository_impl.dart';
 
 class DesvioFeedPage extends ConsumerWidget {
   const DesvioFeedPage({super.key});
@@ -17,133 +22,106 @@ class DesvioFeedPage extends ConsumerWidget {
     final isExterno = session?.perfil == 'EXTERNO';
     final workspace = ref.watch(workspaceProvider);
     final workspaceId = workspace?.estabelecimento.id;
-    final providerKey = isExterno ? null : workspaceId;
-    final async = (isExterno || workspaceId != null)
-        ? ref.watch(desvioListProvider(providerKey)).whenData(
-              (list) => isExterno
-                  ? list.where((d) => d.responsavelTratativaId == session?.id).toList()
-                  : list,
+
+    final (String?, String?) providerKey = isExterno
+        ? (null, 'RESPONSAVEL_TRATATIVA_DESVIO')
+        : (workspaceId, null);
+
+    final desviosAsync = (isExterno || workspaceId != null)
+        ? ref.watch(ocorrenciasProvider(providerKey)).whenData(
+              (list) => list.where((o) => o.isDesvio).toList(),
             )
-        : const AsyncData<List<DesvioSummary>>([]);
+        : const AsyncData<List<OcorrenciaSummary>>([]);
 
     return Scaffold(
-      backgroundColor: ProtoColors.bg,
-      appBar: AppBar(
-        backgroundColor: ProtoColors.bg,
-        foregroundColor: ProtoColors.text,
-        title: const Text('Desvios'),
-      ),
+      backgroundColor: EngSegColors.dark.bgBase,
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          color: ProtoColors.blue,
-          backgroundColor: const Color(0xFF1A2233),
+          color: EngSegColors.dark.accent,
+          backgroundColor: EngSegColors.dark.bgElevated,
           onRefresh: () async {
-            if (isExterno || workspaceId != null) {
-              ref.invalidate(desvioListProvider(providerKey));
-              await ref
-                  .read(desvioListProvider(providerKey).future)
-                  .catchError((_) => <DesvioSummary>[]);
-            }
+            ref.invalidate(ocorrenciasProvider(providerKey));
+            await ref
+                .read(ocorrenciasProvider(providerKey).future)
+                .catchError((_) => <OcorrenciaSummary>[]);
           },
-          child: async.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+          child: desviosAsync.when(
+            loading: () => ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 104),
+              children: List.generate(3, (_) => const CoverCardSkeleton()),
+            ),
             error: (e, _) => Center(
-              child: Text('Erro ao carregar: $e',
-                  style: const TextStyle(color: ProtoColors.red, fontSize: 13)),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline,
+                        size: 48, color: EngSegColors.dark.statusRedFg),
+                    const SizedBox(height: 12),
+                    Text('Erro ao carregar',
+                        style: TextStyle(
+                            color: EngSegColors.dark.statusRedFg,
+                            fontSize: 14)),
+                    const SizedBox(height: 4),
+                    Text('$e',
+                        style: TextStyle(
+                            color: EngSegColors.dark.fg3, fontSize: 12)),
+                  ],
+                ),
+              ),
             ),
             data: (list) => list.isEmpty
-                ? ListView(children: const [
-                    SizedBox(height: 80),
-                    Center(
-                        child: Text('Nenhum desvio encontrado',
-                            style: TextStyle(color: ProtoColors.muted))),
-                  ])
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 104),
-                    children: list.map((d) => _DesvioCard(d: d)).toList(),
+                ? ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 80, 16, 104),
+                    children: [
+                      Column(
+                        children: [
+                          Icon(Icons.inbox_outlined,
+                              size: 48, color: EngSegColors.dark.fg3),
+                          const SizedBox(height: 12),
+                          Text('Nenhum desvio encontrado',
+                              style: TextStyle(
+                                  color: EngSegColors.dark.fg2, fontSize: 14)),
+                        ],
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 104),
+                    itemCount: list.length,
+                    itemBuilder: (_, i) {
+                      final dv = list[i];
+                      final dvColors =
+                          StatusColorHelper.desvioColors(dv.status);
+                      final coverUrl = dv.primeiraEvidenciaId != null
+                          ? '${AppConfig.apiBaseUrl}/api/evidencias/${dv.primeiraEvidenciaId}/download'
+                          : null;
+                      return EngCoverCard(
+                        id: dv.id,
+                        titulo: dv.titulo,
+                        coverUrl: coverUrl,
+                        hasImageCover: dv.hasImageCover,
+                        hasAnyCover: dv.hasAnyCover,
+                        pills: [
+                          EngPill(
+                            label: 'Desvio',
+                            bg: EngSegColors.dark.statusYellowBg,
+                            fg: EngSegColors.dark.statusYellowFg,
+                          ),
+                          EngPill(
+                            label: StatusColorHelper.desvioLabel(dv.status),
+                            bg: dvColors.bg,
+                            fg: dvColors.fg,
+                          ),
+                        ],
+                        meta:
+                            '${dv.estabelecimentoNome} · ${dv.dataRegistro}',
+                        onTap: () => context.push('/desvio/${dv.id}'),
+                      ).staggered(i);
+                    },
                   ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DesvioCard extends StatelessWidget {
-  final DesvioSummary d;
-  const _DesvioCard({required this.d});
-
-  Color _statusBg() => switch (d.status) {
-    'CONCLUIDA' || 'FECHADA' => const Color(0xFF0B3A1C),
-    'EM_AJUSTE_PELO_EXTERNO' || 'NAO_RESOLVIDA' => const Color(0xFF4A1017),
-    'EM_EXECUCAO' => const Color(0xFF2A164A),
-    'AGUARDANDO_VALIDACAO_FINAL' => const Color(0xFF12204A),
-    _ => const Color(0xFF0A2A4A),
-  };
-
-  Color _statusFg() => switch (d.status) {
-    'CONCLUIDA' || 'FECHADA' => ProtoColors.green,
-    'EM_AJUSTE_PELO_EXTERNO' || 'NAO_RESOLVIDA' => ProtoColors.red,
-    'EM_EXECUCAO' => const Color(0xFFD2A8FF),
-    'AGUARDANDO_VALIDACAO_FINAL' => const Color(0xFF93C5FD),
-    _ => ProtoColors.blue,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => context.push('/desvio/${d.id}'),
-        child: ProtoCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(spacing: 6, runSpacing: 4, children: [
-                const ProtoPill(
-                    label: 'Desvio',
-                    bg: Color(0xFF4A390A),
-                    fg: ProtoColors.yellow),
-                ProtoPill(
-                  label: statusLabel[d.status] ?? d.status,
-                  bg: _statusBg(),
-                  fg: _statusFg(),
-                ),
-              ]),
-              const SizedBox(height: 8),
-              Text(d.titulo,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: ProtoColors.text,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900)),
-              const SizedBox(height: 6),
-              Row(children: [
-                const Icon(Icons.place_outlined,
-                    size: 12, color: ProtoColors.muted2),
-                const SizedBox(width: 4),
-                Flexible(
-                    child: Text(d.estabelecimentoNome,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: ProtoColors.muted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700))),
-                const SizedBox(width: 10),
-                const Icon(Icons.schedule_rounded,
-                    size: 12, color: ProtoColors.muted2),
-                const SizedBox(width: 4),
-                Text(d.dataRegistro,
-                    style: const TextStyle(
-                        color: ProtoColors.muted,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700)),
-              ]),
-            ],
           ),
         ),
       ),
