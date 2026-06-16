@@ -1,5 +1,22 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+CustomTransitionPage<void> _fadePage(
+    BuildContext context, GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 240),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+    transitionsBuilder: (_, animation, __, child) {
+      return FadeTransition(
+        opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+        child: child,
+      );
+    },
+  );
+}
 
 import '../../features/auth/login_page.dart';
 import '../../features/auth/provider/auth_provider.dart';
@@ -65,8 +82,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
         ],
       ),
-      GoRoute(path: '/oc/:id', builder: (_, state) => DetailPage(id: state.pathParameters['id']!)),
-      GoRoute(path: '/desvio/:id', builder: (_, state) => DesvioDetailPage(id: state.pathParameters['id']!)),
+      GoRoute(
+        path: '/oc/:id',
+        pageBuilder: (context, state) => _fadePage(
+          context, state,
+          DetailPage(id: state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/desvio/:id',
+        pageBuilder: (context, state) => _fadePage(
+          context, state,
+          DesvioDetailPage(id: state.pathParameters['id']!),
+        ),
+      ),
       GoRoute(path: '/drafts', builder: (_, __) => const DraftsPage()),
       GoRoute(
         path: '/camera',
