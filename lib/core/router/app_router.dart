@@ -2,22 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-CustomTransitionPage<void> _fadePage(
-    BuildContext context, GoRouterState state, Widget child) {
-  return CustomTransitionPage<void>(
-    key: state.pageKey,
-    child: child,
-    transitionDuration: const Duration(milliseconds: 240),
-    reverseTransitionDuration: const Duration(milliseconds: 180),
-    transitionsBuilder: (_, animation, __, child) {
-      return FadeTransition(
-        opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
-        child: child,
-      );
-    },
-  );
-}
-
 import '../../features/auth/login_page.dart';
 import '../../features/auth/provider/auth_provider.dart';
 import '../../features/auth/splash_page.dart';
@@ -35,6 +19,22 @@ import '../../features/wizard/wizard_page.dart';
 import '../../shared/widgets/engseg_shell.dart';
 import 'navigator_key.dart';
 import 'route_guards.dart';
+
+CustomTransitionPage<void> _fadePage(
+    BuildContext context, GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 240),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+    transitionsBuilder: (_, animation, __, child) {
+      return FadeTransition(
+        opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+        child: child,
+      );
+    },
+  );
+}
 
 final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
