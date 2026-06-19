@@ -64,7 +64,7 @@ class _AppConnectivityListener extends ConsumerWidget {
 
       ref.read(syncStatusProvider.notifier).state = SyncStatus.syncing;
       try {
-        await ref.read(syncServiceProvider).syncPendentes(token: session.token);
+        await ref.read(syncServiceProvider).syncPendentes();
         ref.read(syncStatusProvider.notifier).state = SyncStatus.idle;
       } catch (_) {
         ref.read(syncStatusProvider.notifier).state = SyncStatus.error;
