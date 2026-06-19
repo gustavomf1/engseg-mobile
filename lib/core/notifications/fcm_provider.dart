@@ -1,10 +1,10 @@
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../config/app_config.dart';
 import 'fcm_service.dart';
+import '../network/dio_client.dart';
 import '../../main.dart';
 
 final fcmServiceProvider = Provider<FcmService>((ref) {
-  final bffDio = Dio(BaseOptions(baseUrl: AppConfig.bffBaseUrl));
+  // bffDio com Bearer + refresh-on-401 (C3 exige JWT; M2 usa token curto).
+  final bffDio = ref.watch(bffDioProvider);
   return FcmService(bffDio: bffDio, messengerKey: scaffoldMessengerKey);
 });

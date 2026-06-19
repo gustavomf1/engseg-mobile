@@ -1,6 +1,7 @@
 class LoginResponse {
   final String id;
   final String token;
+  final String? refreshToken;
   final String nome;
   final String email;
   final String perfil; // ENGENHEIRO | TECNICO | EXTERNO
@@ -9,6 +10,7 @@ class LoginResponse {
   const LoginResponse({
     required this.id,
     required this.token,
+    this.refreshToken,
     required this.nome,
     required this.email,
     required this.perfil,
@@ -18,6 +20,7 @@ class LoginResponse {
   factory LoginResponse.fromJson(Map<String, dynamic> json) => LoginResponse(
     id: json['id'] as String,
     token: json['token'] as String,
+    refreshToken: json['refreshToken'] as String?,
     nome: json['nome'] as String,
     email: json['email'] as String,
     perfil: json['perfil'] as String,
@@ -27,6 +30,7 @@ class LoginResponse {
   Map<String, dynamic> toJson() => {
     'id': id,
     'token': token,
+    'refreshToken': refreshToken,
     'nome': nome,
     'email': email,
     'perfil': perfil,

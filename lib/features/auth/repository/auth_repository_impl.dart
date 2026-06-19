@@ -33,6 +33,9 @@ class AuthRepositoryImpl implements AuthRepository {
       response.data as Map<String, dynamic>,
     );
     await storage.write(key: 'jwt_token', value: loginResponse.token);
+    if (loginResponse.refreshToken != null) {
+      await storage.write(key: 'refresh_token', value: loginResponse.refreshToken);
+    }
     await storage.write(
       key: 'user_session',
       value: jsonEncode(loginResponse.toJson()),
@@ -42,6 +45,15 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> logout() async {
+    // Revoga o refresh token no servidor (best-effort).
+    final refreshToken = await storage.read(key: 'refresh_token');
+    if (refreshToken != null) {
+      try {
+        await dio.post('/api/auth/logout', data: {'refreshToken': refreshToken});
+      } catch (_) {
+        // ignore
+      }
+    }
     await storage.deleteAll();
   }
 
@@ -51,14 +63,42 @@ class AuthRepositoryImpl implements AuthRepository {
     if (sessionJson == null) return null;
 
     final token = await storage.read(key: 'jwt_token');
+
+    // Access token curto (M2): se expirou, tenta renovar com o refresh token
+    // antes de descartar a sessão (senão o app deslogaria a cada 15 min).
     if (token == null || _isTokenExpired(token)) {
-      await storage.deleteAll();
-      return null;
+      final renovado = await _tentarRenovar();
+      if (!renovado) {
+        await storage.deleteAll();
+        return null;
+      }
     }
 
     return LoginResponse.fromJson(
       jsonDecode(sessionJson) as Map<String, dynamic>,
     );
+  }
+
+  Future<bool> _tentarRenovar() async {
+    final refreshToken = await storage.read(key: 'refresh_token');
+    if (refreshToken == null) return false;
+    try {
+      final raw = Dio(BaseOptions(baseUrl: dio.options.baseUrl));
+      final resp = await raw.post(
+        '/api/auth/refresh',
+        data: {'refreshToken': refreshToken},
+      );
+      final newToken = resp.data['token'] as String?;
+      final newRefresh = resp.data['refreshToken'] as String?;
+      if (newToken == null) return false;
+      await storage.write(key: 'jwt_token', value: newToken);
+      if (newRefresh != null) {
+        await storage.write(key: 'refresh_token', value: newRefresh);
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   bool _isTokenExpired(String token) {

@@ -1,11 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../config/app_config.dart';
+import '../network/dio_client.dart';
 import '../../features/ocorrencias/repository/draft_repository.dart';
 import '../../features/ocorrencias/repository/draft_repository_impl.dart';
 
 final syncServiceProvider = Provider<SyncService>((ref) {
-  final bffDio = Dio(BaseOptions(baseUrl: AppConfig.bffBaseUrl));
+  // bffDio com Bearer + refresh-on-401 (token lido do storage a cada requisição).
+  final bffDio = ref.watch(bffDioProvider);
   return SyncService(
     bffDio: bffDio,
     draftRepository: ref.watch(draftRepositoryProvider),
@@ -18,7 +19,7 @@ class SyncService {
 
   SyncService({required this.bffDio, required this.draftRepository});
 
-  Future<void> syncPendentes({required String token}) async {
+  Future<void> syncPendentes() async {
     final pendentes = await draftRepository.watchPendentes().first;
     if (pendentes.isEmpty) return;
 
@@ -35,7 +36,6 @@ class SyncService {
     final response = await bffDio.post<Map<String, dynamic>>(
       '/sync/batch',
       data: {'items': items},
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
 
     final results = (response.data?['results'] as List<dynamic>?) ?? [];
